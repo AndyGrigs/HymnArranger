@@ -1,6 +1,6 @@
 # 🎵 HymnArranger
 
-> AI model for automatic arrangement of Christian hymns in bayan (button accordion) style
+> AI model for automatic arrangement of Christian hymn melodies in bayan (button accordion) style
 
 
 🌐 **Available in:** [🇺🇦 Українська](README.ua.md) | [🇩🇪 Deutsch](README.de.md)
@@ -9,7 +9,7 @@
 
 ## 📖 About the Project
 
-**HymnArranger** is a machine learning project that trains a neural network to automatically arrange Christian hymn melodies in the style of a bayan (Russian button accordion). The model takes a simple melodic line as input and generates a complete bayan arrangement — including harmony, left-hand accompaniment, and idiomatic bayan texture.
+**HymnArranger** is a machine learning project that trains a neural network to automatically arrange Christian hymn melodies in the style of a bayan (button accordion). The model takes a simple melodic line as input and generates a complete bayan arrangement — including harmony, left-hand accompaniment, and idiomatic bayan texture.
 
 The project combines symbolic music data processing, fine-tuning of transformer-based models, and automatic generation of sheet music in MusicXML, MIDI, and PDF formats.
 
@@ -50,8 +50,8 @@ HymnArranger/
 │       └── arrangement/
 ├── scripts/
 │   ├── prepare_dataset.py   # Data conversion and preparation
-│   ├── extract_melody.py    # Melody extraction from arrangements
-│   └── convert_to_xml.py    # MIDI/PDF → MusicXML
+│   ├── extract_melody.py    # Melody extraction from arrangements (music21)
+│   └── convert_to_xml.py    # PDF → MusicXML via Audiveris
 ├── notebooks/
 │   ├── 01_data_preparation.ipynb
 │   ├── 02_training.ipynb
@@ -70,11 +70,11 @@ HymnArranger/
 | Technology | Purpose |
 |-----------|---------|
 | **Python 3.10+** | Core programming language |
-| **music21** | Music data processing and analysis (MusicXML, MIDI) |
+| **music21** | Music data processing and analysis (MusicXML, MIDI); automated melody extraction |
+| **Audiveris** | Optical Music Recognition — converts source PDF scores to MusicXML |
 | **Hugging Face Transformers** | Fine-tuning GPT-2 / Music Transformer |
 | **Google Colab** | Cloud-based model training (T4 GPU) |
-| **MusicXML / MIDI** | Symbolic music data formats |
-| **MuseScore** | PDF score conversion and arrangement export |
+| **MusicXML / MIDI** | Symbolic music data formats (unified dataset format: MusicXML) |
 
 ---
 
@@ -96,8 +96,8 @@ pip install -r requirements.txt
 ### 3. Prepare the dataset
 
 ```bash
-# Convert MIDI files to MusicXML
-python scripts/convert_to_xml.py --input data/midi/ --output dataset/train/arrangement/
+# Convert PDF scores to MusicXML (via Audiveris)
+python scripts/convert_to_xml.py --input data/pdf/ --output dataset/train/arrangement/
 
 # Automatically extract melodies
 python scripts/extract_melody.py --input dataset/train/arrangement/ --output dataset/train/melody/
@@ -107,7 +107,7 @@ python scripts/extract_melody.py --input dataset/train/arrangement/ --output dat
 
 Open `notebooks/02_training.ipynb` in Google Colab and run all cells.
 
-### 5. Generate an arrangement
+### 5. Generate an arrangement *(planned API — not yet implemented)*
 
 ```python
 from hymn_arranger import HymnArranger
@@ -120,9 +120,9 @@ arranger.arrange("my_melody.xml", output="arrangement.xml", style="bayan")
 
 ## 📊 Dataset
 
-The dataset was collected from publicly available sources of Christian choral music. It includes arrangements for bayan, piano, and other instruments in MusicXML format.
+The dataset is being collected from publicly available sources of Christian choral music (noty-bratstvo.org), covering bayan arrangements paired with their extracted melody lines. All data is unified into MusicXML format. Collection and preparation is currently **in progress**.
 
-| Split  | Size          | Format   |
+| Split  | Target size   | Format   |
 |--------|---------------|----------|
 | train  | ~80% of total | MusicXML |
 | val    | ~20% of total | MusicXML |
@@ -134,7 +134,7 @@ The dataset was collected from publicly available sources of Christian choral mu
 ## 📈 Roadmap
 
 - [x] Define project architecture
-- [x] Collect and prepare dataset
+- [ ] Collect and prepare dataset *(in progress)*
 - [ ] Data conversion scripts
 - [ ] Fine-tune base model
 - [ ] Evaluate arrangement quality

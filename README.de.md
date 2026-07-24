@@ -1,4 +1,4 @@
-# 🎵 HymnArranger
+# HymnArranger
 
 > KI-Modell zur automatischen Harmonisierung christlicher Kirchenlieder im Bajan-Stil
 
@@ -10,7 +10,7 @@
 
 ---
 
-## 📖 Projektbeschreibung
+## Projektbeschreibung
 
 **HymnArranger** ist ein ML-Projekt, das ein neuronales Netz darauf trainiert, Melodien christlicher Kirchenlieder automatisch im Bajan-Stil zu arrangieren. Das Modell nimmt eine einfache Melodielinie entgegen und generiert daraus ein vollständiges Arrangement für Bajan — mit Harmonie, Begleitung für die linke Hand und charakteristischer Bajan-Faktur.
 
@@ -18,7 +18,7 @@ Das Projekt verbindet die Verarbeitung musikalischer Daten, das Fine-Tuning von 
 
 ---
 
-## 🎯 Zielgruppe
+## Zielgruppe
 
 Dieses Projekt richtet sich an:
 
@@ -29,7 +29,7 @@ Dieses Projekt richtet sich an:
 
 ---
 
-## ✨ Funktionen
+## Funktionen
 
 - 🎼 Eingabe einer Melodie im Format MusicXML oder MIDI
 - 🪗 Generierung eines Arrangements im Bajan-Stil (rechte + linke Hand)
@@ -40,7 +40,7 @@ Dieses Projekt richtet sich an:
 
 ---
 
-## 🏗️ Projektstruktur
+## Projektstruktur
 
 ```
 HymnArranger/
@@ -53,8 +53,8 @@ HymnArranger/
 │       └── arrangement/
 ├── scripts/
 │   ├── prepare_dataset.py   # Konvertierung und Datenvorbereitung
-│   ├── extract_melody.py    # Melodieextraktion aus Arrangements
-│   └── convert_to_xml.py    # MIDI/PDF → MusicXML
+│   ├── extract_melody.py    # Melodieextraktion aus Arrangements (music21)
+│   └── convert_to_xml.py    # PDF → MusicXML via Audiveris
 ├── notebooks/
 │   ├── 01_data_preparation.ipynb
 │   ├── 02_training.ipynb
@@ -68,20 +68,20 @@ HymnArranger/
 
 ---
 
-## 🛠️ Technologien
+## Technologien
 
 | Technologie | Verwendungszweck |
 |------------|-----------------|
 | **Python 3.10+** | Hauptprogrammiersprache |
-| **music21** | Verarbeitung und Analyse von Musikdaten (MusicXML, MIDI) |
+| **music21** | Verarbeitung und Analyse von Musikdaten (MusicXML, MIDI); automatisierte Melodieextraktion |
+| **Audiveris** | Optische Notenerkennung (OMR) — konvertiert PDF-Notenvorlagen in MusicXML |
 | **Hugging Face Transformers** | Fine-Tuning von GPT-2 / Music Transformer |
 | **Google Colab** | Cloud-basiertes Modelltraining (GPU T4) |
-| **MusicXML / MIDI** | Formate für Musikdaten |
-| **MuseScore** | Konvertierung von PDF-Noten und Ausgabe fertiger Arrangements |
+| **MusicXML / MIDI** | Formate für Musikdaten (einheitliches Datensatzformat: MusicXML) |
 
 ---
 
-## 🚀 Schnellstart
+## Schnellstart
 
 ### 1. Repository klonen
 
@@ -99,8 +99,8 @@ pip install -r requirements.txt
 ### 3. Datensatz vorbereiten
 
 ```bash
-# MIDI-Dateien in MusicXML konvertieren
-python scripts/convert_to_xml.py --input data/midi/ --output dataset/train/arrangement/
+# PDF-Noten in MusicXML konvertieren (via Audiveris)
+python scripts/convert_to_xml.py --input data/pdf/ --output dataset/train/arrangement/
 
 # Melodien automatisch extrahieren
 python scripts/extract_melody.py --input dataset/train/arrangement/ --output dataset/train/melody/
@@ -110,7 +110,7 @@ python scripts/extract_melody.py --input dataset/train/arrangement/ --output dat
 
 Öffne `notebooks/02_training.ipynb` in Google Colab und führe alle Zellen aus.
 
-### 5. Arrangement generieren
+### 5. Arrangement generieren *(geplante API — noch nicht implementiert)*
 
 ```python
 from hymn_arranger import HymnArranger
@@ -121,11 +121,11 @@ arranger.arrange("my_melody.xml", output="arrangement.xml", style="bayan")
 
 ---
 
-## 📊 Datensatz
+## Datensatz
 
-Der Datensatz wurde aus frei zugänglichen Quellen christlicher Chormusik zusammengestellt. Er enthält Arrangements für Bajan, Klavier und andere Instrumente im MusicXML-Format.
+Der Datensatz wird aus frei zugänglichen Quellen christlicher Chormusik (noty-bratstvo.org) zusammengestellt: Bajan-Arrangements zusammen mit den daraus automatisch extrahierten Melodielinien. Alle Daten werden im Format MusicXML vereinheitlicht. Sammlung und Aufbereitung befinden sich derzeit **in Bearbeitung**.
 
-| Teilmenge | Anzahl Lieder | Format |
+| Teilmenge | Zielanzahl | Format |
 |-----------|--------------|--------|
 | train     | ~80% gesamt  | MusicXML |
 | val       | ~20% gesamt  | MusicXML |
@@ -134,10 +134,10 @@ Der Datensatz wurde aus frei zugänglichen Quellen christlicher Chormusik zusamm
 
 ---
 
-## 📈 Aktueller Status
+## Aktueller Status
 
 - [x] Projektarchitektur festgelegt
-- [x] Datensatz gesammelt und vorbereitet
+- [ ] Datensatz gesammelt und vorbereitet *(in Bearbeitung)*
 - [ ] Skripte zur Datenkonvertierung
 - [ ] Fine-Tuning des Basismodells
 - [ ] Qualitätsbewertung der Arrangements
@@ -146,7 +146,7 @@ Der Datensatz wurde aus frei zugänglichen Quellen christlicher Chormusik zusamm
 
 ---
 
-## 🤝 Mitwirken
+## Mitwirken
 
 Beiträge sind willkommen! So kannst du mitmachen:
 
@@ -167,7 +167,7 @@ Beiträge sind willkommen! So kannst du mitmachen:
 
 ---
 
-## 📄 Lizenz
+## Lizenz
 
 Dieses Projekt steht unter der MIT-Lizenz. Details siehe [LICENSE](LICENSE).
 

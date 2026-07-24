@@ -53,8 +53,8 @@ HymnArranger/
 │       └── arrangement/
 ├── scripts/
 │   ├── prepare_dataset.py   # Конвертація та підготовка даних
-│   ├── extract_melody.py    # Витягування мелодії з аранжування
-│   └── convert_to_xml.py    # MIDI/PDF → MusicXML
+│   ├── extract_melody.py    # Витягування мелодії з аранжування (music21)
+│   └── convert_to_xml.py    # PDF → MusicXML через Audiveris
 ├── notebooks/
 │   ├── 01_data_preparation.ipynb
 │   ├── 02_training.ipynb
@@ -73,11 +73,11 @@ HymnArranger/
 | Технологія | Призначення |
 |-----------|-------------|
 | **Python 3.10+** | Основна мова розробки |
-| **music21** | Обробка та аналіз музичних даних (MusicXML, MIDI) |
+| **music21** | Обробка та аналіз музичних даних (MusicXML, MIDI); автоматичне витягування мелодії |
+| **Audiveris** | Оптичне розпізнавання нот (OMR) — конвертація вихідних PDF-партитур у MusicXML |
 | **Hugging Face Transformers** | Fine-tuning GPT-2 / Music Transformer |
 | **Google Colab** | Хмарне тренування моделі (GPU T4) |
-| **MusicXML / MIDI** | Формати музичних даних |
-| **MuseScore** | Конвертація PDF нот та вивід готових аранжувань |
+| **MusicXML / MIDI** | Формати музичних даних (єдиний формат датасету: MusicXML) |
 
 ---
 
@@ -99,8 +99,8 @@ pip install -r requirements.txt
 ### 3. Підготовка датасету
 
 ```bash
-# Конвертація MIDI файлів у MusicXML
-python scripts/convert_to_xml.py --input data/midi/ --output dataset/train/arrangement/
+# Конвертація PDF-нот у MusicXML (через Audiveris)
+python scripts/convert_to_xml.py --input data/pdf/ --output dataset/train/arrangement/
 
 # Автоматичне витягування мелодій
 python scripts/extract_melody.py --input dataset/train/arrangement/ --output dataset/train/melody/
@@ -110,7 +110,7 @@ python scripts/extract_melody.py --input dataset/train/arrangement/ --output dat
 
 Відкрий `notebooks/02_training.ipynb` у Google Colab і запусти всі комірки.
 
-### 5. Генерація аранжування
+### 5. Генерація аранжування *(планований API — ще не реалізований)*
 
 ```python
 from hymn_arranger import HymnArranger
@@ -123,9 +123,9 @@ arranger.arrange("my_melody.xml", output="arrangement.xml", style="bayan")
 
 ## 📊 Датасет
 
-Датасет зібрано з відкритих джерел християнської хорової музики. Містить аранжування для баяна, фортепіано та інших інструментів у форматі MusicXML.
+Датасет збирається з відкритих джерел християнської хорової музики (noty-bratstvo.org): аранжування для баяна разом з автоматично витягнутими з них мелодичними лініями. Усі дані уніфікуються у форматі MusicXML. Збір та підготовка наразі **в процесі**.
 
-| Розділ | Кількість пісень | Формат |
+| Розділ | Цільова кількість | Формат |
 |--------|-----------------|--------|
 | train  | ~80% від загального | MusicXML |
 | val    | ~20% від загального | MusicXML |
@@ -137,7 +137,7 @@ arranger.arrange("my_melody.xml", output="arrangement.xml", style="bayan")
 ## 📈 Поточний статус
 
 - [x] Визначення архітектури проєкту
-- [x] Збір та підготовка датасету
+- [ ] Збір та підготовка датасету *(в процесі)*
 - [ ] Скрипти конвертації даних
 - [ ] Fine-tuning базової моделі
 - [ ] Оцінка якості аранжувань

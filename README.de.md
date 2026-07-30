@@ -1,26 +1,54 @@
-# HymnArranger
+# 🎵 HymnArranger
 
-> KI-Modell zur automatischen Harmonisierung christlicher Kirchenlieder im Bajan-Stil
+> KI-gestützte Web-App zur automatischen Harmonisierung christlicher Kirchenlieder
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python-green.svg)](https://fastapi.tiangolo.com/)
 [![Hugging Face](https://img.shields.io/badge/🤗-Hugging%20Face-yellow.svg)](https://huggingface.co/)
-[![Google Colab](https://img.shields.io/badge/Google-Colab-orange.svg)](https://colab.research.google.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-In%20Entwicklung-yellow.svg)]()
 
 ---
 
+🌐 **Verfügbar in:** [🇬🇧 English](README.md) | [🇺🇦 Українська](README.ua.md)
+
+---
+
 ## Projektbeschreibung
 
-**HymnArranger** ist ein ML-Projekt, das ein neuronales Netz darauf trainiert, Melodien christlicher Kirchenlieder automatisch im Bajan-Stil zu arrangieren. Das Modell nimmt eine einfache Melodielinie entgegen und generiert daraus ein vollständiges Arrangement für Bajan — mit Harmonie, Begleitung für die linke Hand und charakteristischer Bajan-Faktur.
+**HymnArranger** ist eine vollständige Web-Anwendung, die ein ML-Modell verwendet, um Melodien christlicher Kirchenlieder automatisch zu arrangieren. Der Nutzer lädt eine Melodie hoch, wählt einen Stil (Bajan, Klavier, Streicher) und erhält ein fertiges Arrangement direkt im Browser — mit der Möglichkeit, PDF, MIDI oder MusicXML herunterzuladen.
 
-Das Projekt verbindet die Verarbeitung musikalischer Daten, das Fine-Tuning von Transformer-Modellen und die automatische Erzeugung von Notenfiles in den Formaten MusicXML, MIDI und PDF.
+---
+
+## 🏗️ Produktarchitektur
+
+```
+┌─────────────────────────────────────┐
+│           FRONTEND (UI)             │
+│  - Melodie hochladen                │
+│  - Stil wählen (Bajan / Klavier)    │
+│  - Noten online ansehen             │
+│  - PDF / MIDI herunterladen         │
+└────────────────┬────────────────────┘
+                 │ REST API
+┌────────────────▼────────────────────┐
+│           BACKEND (API)             │
+│  - MusicXML / MIDI verarbeiten      │
+│  - ML-Modell aufrufen               │
+│  - PDF-Erzeugung via MuseScore      │
+│  - Ergebnisse speichern             │
+└────────────────┬────────────────────┘
+                 │
+┌────────────────▼────────────────────┐
+│           ML-MODELL                 │
+│  - Fine-tuned Music Transformer     │
+│  - Hugging Face Inferenz            │
+└─────────────────────────────────────┘
+```
 
 ---
 
 ## Zielgruppe
-
-Dieses Projekt richtet sich an:
 
 - **Musiker in Kirchengemeinden** — schnelle Erstellung von Arrangements für Gottesdienste
 - **ML-Entwickler** — Beispiel für den Einsatz von Transformern zur symbolischen Musikgenerierung
@@ -32,11 +60,26 @@ Dieses Projekt richtet sich an:
 ## Funktionen
 
 - 🎼 Eingabe einer Melodie im Format MusicXML oder MIDI
-- 🪗 Generierung eines Arrangements im Bajan-Stil (rechte + linke Hand)
-- 🎨 Unterstützung verschiedener Stile (geplant: Bajan, Klavier, Akkordeon)
-- 📄 Ausgabe in den Formaten MusicXML, MIDI und PDF
-- ☁️ Training und Inferenz in Google Colab (ohne leistungsstarke GPU)
-- 🔧 Fine-Tuning auf eigenem Datensatz
+- 🪗 Generierung eines Arrangements im gewählten Stil (Bajan, Klavier, Streicher)
+- 👁️ Notenansicht direkt im Browser (OpenSheetMusicDisplay)
+- 📄 Download des Ergebnisses als PDF, MIDI oder MusicXML
+- ☁️ ML-Modell gehostet auf Hugging Face Spaces
+
+---
+
+## Technologien
+
+| Teil | Technologie | Warum |
+|------|------------|-------|
+| **Frontend** | Next.js + TypeScript | Schnelle Entwicklung, SSR |
+| **UI-Komponenten** | Tailwind + shadcn/ui | Schnell und schön |
+| **Notenansicht** | OpenSheetMusicDisplay | MusicXML-Rendering im Browser |
+| **Backend** | Python FastAPI | Ideal für ML-Integration |
+| **ML-Modell** | Hugging Face + PyTorch | Fine-tuned Transformer |
+| **Konvertierung** | music21 + MuseScore CLI | MusicXML → PDF / MIDI |
+| **Datenbank** | PostgreSQL | Speicherung von Songs und Ergebnissen |
+| **Modell-Hosting** | Hugging Face Spaces | Kostenlos für Demo |
+| **Deployment** | AWS / Vercel + Railway | Bewährter Stack |
 
 ---
 
@@ -44,86 +87,76 @@ Dieses Projekt richtet sich an:
 
 ```
 HymnArranger/
-├── dataset/
-│   ├── train/
-│   │   ├── melody/          # Melodielinien (Eingabe)
-│   │   └── arrangement/     # Vollständige Arrangements (Ziel)
-│   └── val/
-│       ├── melody/
-│       └── arrangement/
-├── scripts/
-│   ├── prepare_dataset.py   # Konvertierung und Datenvorbereitung
-│   ├── extract_melody.py    # Melodieextraktion aus Arrangements (music21)
-│   └── convert_to_xml.py    # PDF → MusicXML via Audiveris
-├── notebooks/
-│   ├── 01_data_preparation.ipynb
-│   ├── 02_training.ipynb
-│   └── 03_inference.ipynb
-├── model/
-│   └── config.json
-├── output/                  # Generierte Arrangements
-├── requirements.txt
-└── README.md
+├── frontend/                # Next.js App
+│   ├── app/
+│   │   ├── page.tsx         # Startseite
+│   │   ├── arrange/         # Arrangierseite
+│   │   └── results/         # Ergebnisansicht
+│   └── components/
+│       ├── MelodyUploader   # Datei-Upload
+│       ├── StyleSelector    # Stil-Auswahl
+│       └── SheetViewer      # Notenansicht
+│
+├── backend/                 # FastAPI-Server
+│   ├── main.py              # Einstiegspunkt
+│   ├── routes/
+│   │   ├── arrange.py       # POST /arrange
+│   │   └── download.py      # GET /download/{id}
+│   ├── services/
+│   │   ├── ml_service.py    # Modellaufruf
+│   │   ├── music_service.py # music21-Verarbeitung
+│   │   └── pdf_service.py   # PDF-Erzeugung
+│   └── models/              # Pydantic-Schemas
+│
+├── ml/                      # ML-Teil
+│   ├── dataset/
+│   ├── notebooks/
+│   └── model/
+│
+└── dataset/                 # Datensatz
 ```
 
 ---
 
-## Technologien
+## Nutzerablauf
 
-| Technologie | Verwendungszweck |
-|------------|-----------------|
-| **Python 3.10+** | Hauptprogrammiersprache |
-| **music21** | Verarbeitung und Analyse von Musikdaten (MusicXML, MIDI); automatisierte Melodieextraktion |
-| **Audiveris** | Optische Notenerkennung (OMR) — konvertiert PDF-Notenvorlagen in MusicXML |
-| **Hugging Face Transformers** | Fine-Tuning von GPT-2 / Music Transformer |
-| **Google Colab** | Cloud-basiertes Modelltraining (GPU T4) |
-| **MusicXML / MIDI** | Formate für Musikdaten (einheitliches Datensatzformat: MusicXML) |
+```
+1. Nutzer lädt eine Melodie hoch (MusicXML oder MIDI)
+            ↓
+2. Wählt einen Stil: 🪗 Bajan / 🎹 Klavier / 🎻 Streicher
+            ↓
+3. Klickt auf „Arrangieren"
+            ↓
+4. Sieht die Noten direkt im Browser (OpenSheetMusicDisplay)
+            ↓
+5. Lädt PDF / MIDI / MusicXML herunter
+```
 
 ---
 
 ## Schnellstart
 
-### 1. Repository klonen
+### Frontend
 
 ```bash
-git clone https://github.com/your-username/HymnArranger.git
-cd HymnArranger
+cd frontend
+npm install
+npm run dev
 ```
 
-### 2. Abhängigkeiten installieren
+### Backend
 
 ```bash
+cd backend
 pip install -r requirements.txt
-```
-
-### 3. Datensatz vorbereiten
-
-```bash
-# PDF-Noten in MusicXML konvertieren (via Audiveris)
-python scripts/convert_to_xml.py --input data/pdf/ --output dataset/train/arrangement/
-
-# Melodien automatisch extrahieren
-python scripts/extract_melody.py --input dataset/train/arrangement/ --output dataset/train/melody/
-```
-
-### 4. Training in Google Colab
-
-Öffne `notebooks/02_training.ipynb` in Google Colab und führe alle Zellen aus.
-
-### 5. Arrangement generieren *(geplante API — noch nicht implementiert)*
-
-```python
-from hymn_arranger import HymnArranger
-
-arranger = HymnArranger.load("model/")
-arranger.arrange("my_melody.xml", output="arrangement.xml", style="bayan")
+uvicorn main:app --reload
 ```
 
 ---
 
 ## Datensatz
 
-Der Datensatz wird aus frei zugänglichen Quellen christlicher Chormusik (noty-bratstvo.org) zusammengestellt: Bajan-Arrangements zusammen mit den daraus automatisch extrahierten Melodielinien. Alle Daten werden im Format MusicXML vereinheitlicht. Sammlung und Aufbereitung befinden sich derzeit **in Bearbeitung**.
+Der Datensatz wird aus frei zugänglichen Quellen christlicher Chormusik (noty-bratstvo.org) zusammengestellt: Bajan-Arrangements zusammen mit den daraus automatisch extrahierten Melodielinien. Alle Daten werden im Format MusicXML vereinheitlicht.
 
 | Teilmenge | Zielanzahl | Format |
 |-----------|--------------|--------|
@@ -138,11 +171,11 @@ Der Datensatz wird aus frei zugänglichen Quellen christlicher Chormusik (noty-b
 
 - [x] Projektarchitektur festgelegt
 - [ ] Datensatz gesammelt und vorbereitet *(in Bearbeitung)*
-- [ ] Skripte zur Datenkonvertierung
-- [ ] Fine-Tuning des Basismodells
-- [ ] Qualitätsbewertung der Arrangements
-- [ ] Web-Interface zur Demonstration
-- [ ] Unterstützung weiterer Instrumente (Klavier, Akkordeon)
+- [ ] ML-Modell fine-tunen
+- [ ] Backend API (FastAPI)
+- [ ] Frontend (Next.js)
+- [ ] OpenSheetMusicDisplay Integration
+- [ ] Deployment auf Vercel + Railway
 
 ---
 

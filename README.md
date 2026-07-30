@@ -1,7 +1,14 @@
 # 🎵 HymnArranger
 
-> AI model for automatic arrangement of Christian hymn melodies in bayan (button accordion) style
+> AI-powered web app for automatic arrangement of Christian hymn melodies
 
+[![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python-green.svg)](https://fastapi.tiangolo.com/)
+[![Hugging Face](https://img.shields.io/badge/🤗-Hugging%20Face-yellow.svg)](https://huggingface.co/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-In%20Development-yellow.svg)]()
+
+---
 
 🌐 **Available in:** [🇺🇦 Українська](README.ua.md) | [🇩🇪 Deutsch](README.de.md)
 
@@ -9,15 +16,39 @@
 
 ## 📖 About the Project
 
-**HymnArranger** is a machine learning project that trains a neural network to automatically arrange Christian hymn melodies in the style of a bayan (button accordion). The model takes a simple melodic line as input and generates a complete bayan arrangement — including harmony, left-hand accompaniment, and idiomatic bayan texture.
+**HymnArranger** is a full-stack web application that uses an ML model to automatically arrange Christian hymn melodies. The user uploads a melody, selects a style (bayan, piano, strings), and receives a complete arrangement directly in the browser — with the option to download PDF, MIDI, or MusicXML.
 
-The project combines symbolic music data processing, fine-tuning of transformer-based models, and automatic generation of sheet music in MusicXML, MIDI, and PDF formats.
+---
+
+## 🏗️ Product Architecture
+
+```
+┌─────────────────────────────────────┐
+│           FRONTEND (UI)             │
+│  - Melody upload                    │
+│  - Style selection (bayan / piano)  │
+│  - Sheet music preview online       │
+│  - PDF / MIDI download              │
+└────────────────┬────────────────────┘
+                 │ REST API
+┌────────────────▼────────────────────┐
+│           BACKEND (API)             │
+│  - MusicXML / MIDI processing       │
+│  - ML model inference               │
+│  - PDF generation via MuseScore     │
+│  - Result storage                   │
+└────────────────┬────────────────────┘
+                 │
+┌────────────────▼────────────────────┐
+│           ML MODEL                  │
+│  - Fine-tuned Music Transformer     │
+│  - Hugging Face inference           │
+└─────────────────────────────────────┘
+```
 
 ---
 
 ## 🎯 Target Audience
-
-This project is useful for:
 
 - **Church musicians** — quickly create arrangements for worship services
 - **ML developers** — a practical example of applying transformers to symbolic music generation
@@ -29,103 +60,108 @@ This project is useful for:
 ## ✨ Features
 
 - 🎼 Accepts melody input in MusicXML or MIDI format
-- 🪗 Generates full bayan arrangements (right hand + left hand)
-- 🎨 Style parameter support (planned: bayan, piano, accordion)
-- 📄 Output in MusicXML, MIDI, and PDF formats
-- ☁️ Training and inference in Google Colab (no powerful GPU required)
-- 🔧 Fine-tuning on custom dataset
-
----
-
-## 🏗️ Project Structure
-
-```
-HymnArranger/
-├── dataset/
-│   ├── train/
-│   │   ├── melody/          # Melody lines (model input)
-│   │   └── arrangement/     # Full arrangements (model target)
-│   └── val/
-│       ├── melody/
-│       └── arrangement/
-├── scripts/
-│   ├── prepare_dataset.py   # Data conversion and preparation
-│   ├── extract_melody.py    # Melody extraction from arrangements (music21)
-│   └── convert_to_xml.py    # PDF → MusicXML via Audiveris
-├── notebooks/
-│   ├── 01_data_preparation.ipynb
-│   ├── 02_training.ipynb
-│   └── 03_inference.ipynb
-├── model/
-│   └── config.json
-├── output/                  # Generated arrangements
-├── requirements.txt
-└── README.md
-```
+- 🪗 Generates arrangements in the selected style (bayan, piano, strings)
+- 👁️ Sheet music preview directly in the browser (OpenSheetMusicDisplay)
+- 📄 Download results in PDF, MIDI, or MusicXML format
+- ☁️ ML model hosted on Hugging Face Spaces
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Technology | Purpose |
-|-----------|---------|
-| **Python 3.10+** | Core programming language |
-| **music21** | Music data processing and analysis (MusicXML, MIDI); automated melody extraction |
-| **Audiveris** | Optical Music Recognition — converts source PDF scores to MusicXML |
-| **Hugging Face Transformers** | Fine-tuning GPT-2 / Music Transformer |
-| **Google Colab** | Cloud-based model training (T4 GPU) |
-| **MusicXML / MIDI** | Symbolic music data formats (unified dataset format: MusicXML) |
+| Part | Technology | Why |
+|------|-----------|-----|
+| **Frontend** | Next.js + TypeScript | Fast development, SSR |
+| **UI components** | Tailwind + shadcn/ui | Fast and beautiful |
+| **Sheet viewer** | OpenSheetMusicDisplay | MusicXML rendering in browser |
+| **Backend** | Python FastAPI | Perfect for ML integration |
+| **ML model** | Hugging Face + PyTorch | Fine-tuned transformer |
+| **Conversion** | music21 + MuseScore CLI | MusicXML → PDF / MIDI |
+| **Database** | PostgreSQL | Song and result storage |
+| **Model hosting** | Hugging Face Spaces | Free for demo |
+| **Deploy** | AWS / Vercel + Railway | Proven stack |
+
+---
+
+## 📁 Project Structure
+
+```
+HymnArranger/
+├── frontend/                # Next.js app
+│   ├── app/
+│   │   ├── page.tsx         # Home page
+│   │   ├── arrange/         # Arrangement page
+│   │   └── results/         # Results viewer
+│   └── components/
+│       ├── MelodyUploader   # File upload
+│       ├── StyleSelector    # Style selection
+│       └── SheetViewer      # Sheet music viewer
+│
+├── backend/                 # FastAPI server
+│   ├── main.py              # Entry point
+│   ├── routes/
+│   │   ├── arrange.py       # POST /arrange
+│   │   └── download.py      # GET /download/{id}
+│   ├── services/
+│   │   ├── ml_service.py    # Model inference
+│   │   ├── music_service.py # music21 processing
+│   │   └── pdf_service.py   # PDF generation
+│   └── models/              # Pydantic schemas
+│
+├── ml/                      # ML part
+│   ├── dataset/
+│   ├── notebooks/
+│   └── model/
+│
+└── dataset/                 # Dataset
+```
+
+---
+
+## 🚀 User Flow
+
+```
+1. User uploads a melody (MusicXML or MIDI)
+            ↓
+2. Selects a style: 🪗 Bayan / 🎹 Piano / 🎻 Strings
+            ↓
+3. Clicks "Arrange"
+            ↓
+4. Sees sheet music directly in the browser (OpenSheetMusicDisplay)
+            ↓
+5. Downloads PDF / MIDI / MusicXML
+```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone the repository
+### Frontend
 
 ```bash
-git clone https://github.com/your-username/HymnArranger.git
-cd HymnArranger
+cd frontend
+npm install
+npm run dev
 ```
 
-### 2. Install dependencies
+### Backend
 
 ```bash
+cd backend
 pip install -r requirements.txt
-```
-
-### 3. Prepare the dataset
-
-```bash
-# Convert PDF scores to MusicXML (via Audiveris)
-python scripts/convert_to_xml.py --input data/pdf/ --output dataset/train/arrangement/
-
-# Automatically extract melodies
-python scripts/extract_melody.py --input dataset/train/arrangement/ --output dataset/train/melody/
-```
-
-### 4. Train in Google Colab
-
-Open `notebooks/02_training.ipynb` in Google Colab and run all cells.
-
-### 5. Generate an arrangement *(planned API — not yet implemented)*
-
-```python
-from hymn_arranger import HymnArranger
-
-arranger = HymnArranger.load("model/")
-arranger.arrange("my_melody.xml", output="arrangement.xml", style="bayan")
+uvicorn main:app --reload
 ```
 
 ---
 
 ## 📊 Dataset
 
-The dataset is being collected from publicly available sources of Christian choral music (noty-bratstvo.org), covering bayan arrangements paired with their extracted melody lines. All data is unified into MusicXML format. Collection and preparation is currently **in progress**.
+The dataset is collected from publicly available sources of Christian choral music (noty-bratstvo.org): bayan arrangements paired with automatically extracted melody lines. All data is unified into MusicXML format.
 
-| Split  | Target size   | Format   |
-|--------|---------------|----------|
-| train  | ~80% of total | MusicXML |
-| val    | ~20% of total | MusicXML |
+| Split | Target size | Format |
+|-------|-------------|--------|
+| train | ~80% of total | MusicXML |
+| val   | ~20% of total | MusicXML |
 
 > **Note:** All materials used are publicly available. This project has no commercial purpose.
 
@@ -135,11 +171,11 @@ The dataset is being collected from publicly available sources of Christian chor
 
 - [x] Define project architecture
 - [ ] Collect and prepare dataset *(in progress)*
-- [ ] Data conversion scripts
-- [ ] Fine-tune base model
-- [ ] Evaluate arrangement quality
-- [ ] Web demo interface
-- [ ] Support for additional instruments (piano, accordion)
+- [ ] Fine-tune ML model
+- [ ] Backend API (FastAPI)
+- [ ] Frontend (Next.js)
+- [ ] OpenSheetMusicDisplay integration
+- [ ] Deploy to Vercel + Railway
 
 ---
 

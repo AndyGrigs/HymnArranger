@@ -324,13 +324,19 @@ def tokenize_split(
         print(f"  ⚠️  Папки не знайдені для {split}/")
         return stats
 
+    def normalize_stem(stem: str) -> str:
+        # старі файли: song_XXX_melody / song_XXX_full -> song_XXX
+        # варіації після split_variations.py: song_XXX_full_varN (однаково
+        # для мелодії й аранжування) -> song_XXX_varN
+        return stem.replace("_melody", "").replace("_full", "")
+
     melody_files = {
-        f.stem.replace("_melody", ""): f
+        normalize_stem(f.stem): f
         for ext in ("*.xml", "*.musicxml", "*.mxl")
         for f in melody_dir.glob(ext)
     }
     arrangement_files = {
-        f.stem.replace("_full", ""): f
+        normalize_stem(f.stem): f
         for ext in ("*.xml", "*.musicxml", "*.mxl")
         for f in arrangement_dir.glob(ext)
     }

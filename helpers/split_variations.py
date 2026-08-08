@@ -60,7 +60,7 @@ from pathlib import Path
 from music21 import converter
 from music21 import stream
 
-from music21_fixes import strip_degenerate_arpeggios
+from helpers.music21_fixes import strip_degenerate_arpeggios
 
 import re
 

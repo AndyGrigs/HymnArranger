@@ -1,0 +1,22 @@
+# HymnArranger — правиловий генератор баянних аранжувань
+# Python 3.10+
+#
+#   python3 -m venv .venv
+#   source .venv/bin/activate          # Windows: .venv\Scripts\activate
+#   pip install -r requirements.txt
+#
+#   python arranger.py melody.musicxml -p mixed -o out.musicxml
+#   python arranger.py melody.musicxml --all  -o out.musicxml
+
+# ── Ядро: обробка нотного матеріалу ───────────────────────────────
+# Сам підтягує numpy, matplotlib, chardet, joblib, jsonpickle,
+# more-itertools, requests, webcolors
+music21==10.5.0
+
+# ── Бекенд: потрібен лише для React-фронтенду ────────────────────
+# fastapi==0.141.1
+# uvicorn[standard]==0.52.1
+# python-multipart==0.0.32
+
+# # ── Розробка і тести ─────────────────────────────────────────────
+# pytest==9.1.1

@@ -1,4 +1,3 @@
-
 """
 arranger.py v2 — генератор баянної партитури з мелодії + акордових символів.
 
@@ -352,12 +351,15 @@ LH_PATTERNS = ('bass_chord', 'bass_alt_fifth', 'waltz', 'auto')
 @dataclass
 class ArrangeConfig:
     """Один об'єкт = один стиль аранжування. Новий стиль != новий цикл коду."""
-    subdivision: int = 2                 # 2 = вісімки, 4 = шістнадцяті
-    cadence_subdivision: Optional[int] = None   # дрібніше на останній ноті такту
+    unit_ql: float = 0.5                 # ЦІЛЬОВА тривалість: 0.5=вісімка, 0.25=16-та
+    cadence_unit_ql: Optional[float] = None     # дрібніше на останній ноті такту
+    max_parts: int = 8                   # стеля дроблення однієї ноти
+    preserve_final: bool = True          # останню ноту твору не чіпати
     min_ql_to_split: float = 1.0         # дробимо ноти від чверті й довші
     second_strategy: str = 'chord_tone'  # як розв'язувати "впирання" в секунду
     tight_figure: str = 'neighbor'       # 'neighbor' (оспівування) | 'arpeggio'
     lh_pattern: str = 'auto'
+    alt_bass_on_change: bool = False     # False = на зміні акорду бас бере приму
     lh_bass_octave: int = 2
     lh_chord_octave: int = 3
     rh_min_midi: int = 53                # F3 — низ правої клавіатури баяна
@@ -436,9 +438,35 @@ def figurate(cur: pitch.Pitch, target: Optional[pitch.Pitch],
             i += 1
 
     figure = [cur] + fill + [approach]
-    figure = [f if f.midi != target.midi else _step(f, k, -1) for f in figure]
+    figure = _dedupe(figure, target, cs, k)
     figure[0] = cur                                       # інваріант сильної долі
     return [_clamp(p, cfg) for p in figure]
+
+
+def _dedupe(figure: List[pitch.Pitch], target: pitch.Pitch,
+            cs, k: key.Key) -> List[pitch.Pitch]:
+    """
+    Два інваріанти фігури:
+      - жодна нота не дорівнює наступній ноті мелодії (немає передчасного показу);
+      - жодні дві СУСІДНІ ноти не однакові (немає застряглого повтору).
+    Другий інваріант і давав 'G4 F4 G4 G4' наприкінці кожної каденції.
+    """
+    out = [figure[0]]
+    for i in range(1, len(figure)):
+        p = figure[i]
+        for attempt in range(4):
+            bad = (p.midi == out[-1].midi) or (p.midi == target.midi)
+            if not bad:
+                break
+            # пробуємо по черзі: крок вниз, крок вгору, тон акорду поруч
+            if attempt == 0:
+                p = _step(out[-1], k, -1)
+            elif attempt == 1:
+                p = _step(out[-1], k, 1)
+            else:
+                p = _nearest_chord_tone(cs, out[-1], -1 if attempt == 2 else 1, k)
+        out.append(p)
+    return out
 
 
 def build_right_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.GeneralNote]:
@@ -450,6 +478,8 @@ def build_right_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Gener
         if not ev.is_rest:
             last_in_measure[ev.measure] = ev.offset
 
+    last_sounding_idx = max((i for i, e in enumerate(ctx.events) if not e.is_rest),
+                            default=-1)
     out: List[note.GeneralNote] = []
     for i, ev in enumerate(ctx.events):
         if ev.is_rest:
@@ -460,11 +490,15 @@ def build_right_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Gener
             continue
 
         n_parts = 1
-        if ev.ql >= cfg.min_ql_to_split:
-            n_parts = cfg.subdivision
-            if (cfg.cadence_subdivision
+        is_final = (i == last_sounding_idx)
+        if ev.ql >= cfg.min_ql_to_split and not (cfg.preserve_final and is_final):
+            unit = cfg.unit_ql
+            if (cfg.cadence_unit_ql
                     and last_in_measure.get(ev.measure) == ev.offset):
-                n_parts = cfg.cadence_subdivision
+                unit = cfg.cadence_unit_ql
+            # ключове: кількість часток виводиться з ТРИВАЛОСТІ ноти,
+            # тому половинна дає 4 вісімки, а ціла — 8, а не завжди дві частини
+            n_parts = max(1, min(cfg.max_parts, int(round(ev.ql / unit))))
 
         if n_parts <= 1:
             n = note.Note(ev.pitch)
@@ -578,6 +612,10 @@ def build_left_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Genera
                 continue
 
             if role in ('B', 'F'):
+                if role == 'F' and not cfg.alt_bass_on_change:
+                    prev = ctx.chord_at(off - beat_ql) if off >= beat_ql else None
+                    if prev is None or prev.figure != cs.figure:
+                        role = 'B'          # акорд щойно змінився -> прима
                 base = cs.root() if role == 'B' else (cs.fifth or cs.root())
                 p = pitch.Pitch(base.name)
                 p.octave = cfg.lh_bass_octave
@@ -637,17 +675,17 @@ def to_musicxml_string(sc: stream.Score) -> str:
 # --- готові пресети (для порівняння у розділі 4 диплому) ---
 
 PRESETS = {
-    'eighths_ct':   ArrangeConfig(subdivision=2, second_strategy='chord_tone',
-                                  name='Вісімки / акордовий тон'),
-    'eighths_nb':   ArrangeConfig(subdivision=2, second_strategy='neighbor_away',
-                                  name='Вісімки / допоміжний тон'),
-    'sixteenths_nb': ArrangeConfig(subdivision=4, tight_figure='neighbor',
+    'eighths_ct':    ArrangeConfig(unit_ql=0.5, second_strategy='chord_tone',
+                                   name='Вісімки / акордовий тон'),
+    'eighths_nb':    ArrangeConfig(unit_ql=0.5, second_strategy='neighbor_away',
+                                   name='Вісімки / допоміжний тон'),
+    'sixteenths_nb': ArrangeConfig(unit_ql=0.25, tight_figure='neighbor', max_parts=16,
                                    name='Шістнадцяті / оспівування'),
-    'sixteenths_arp': ArrangeConfig(subdivision=4, tight_figure='arpeggio',
+    'sixteenths_arp': ArrangeConfig(unit_ql=0.25, tight_figure='arpeggio', max_parts=16,
                                     name='Шістнадцяті / арпеджіо'),
-    'mixed':        ArrangeConfig(subdivision=2, cadence_subdivision=4,
-                                  name='Мікс (каденції — 16-ті)'),
-    'waltz':        ArrangeConfig(subdivision=2, lh_pattern='waltz', name='Вальс'),
+    'mixed':         ArrangeConfig(unit_ql=0.5, cadence_unit_ql=0.25,
+                                   name='Мікс (каденції — 16-ті)'),
+    'waltz':         ArrangeConfig(unit_ql=0.5, lh_pattern='waltz', name='Вальс'),
 }
 
 

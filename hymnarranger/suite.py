@@ -10,7 +10,7 @@ from music21 import stream
 
 from .parsing import parse_input
 from .assembly import arrange, arrange_multi
-from .. import meters
+from . import meters
 
 
 # Режими, де мелодію веде ліва рука: там свій супровід, патерн не чіпаємо

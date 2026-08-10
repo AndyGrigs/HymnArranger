@@ -16,7 +16,7 @@ from .textures import (
     build_melody_plain, build_chord_melody, build_pulse_hand,
     build_bass_melody, build_two_voice_arp, build_thirds_hand,
 )
-from ..lefthand import build_left_hand
+from .lefthand import build_left_hand
 
 
 def build_hands(ctx: ArrangeContext, cfg: ArrangeConfig):

@@ -328,4 +328,21 @@ def build_thirds_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Gene
         out.append(el)
         off += dur
         first = False
-    return out
+
+    # Коли бас рухається дрібно, ноту супроводу доводиться перевибирати
+    # часто, і поруч опиняються дві однакові висоти. Зливаємо їх в одну
+    # витриману — фактура має звучати як педаль, а не як повтори.
+    merged: List[note.GeneralNote] = []
+    for el in out:
+        if merged and not el.isRest and not merged[-1].isRest \
+                and merged[-1].pitches[0].nameWithOctave == el.pitches[0].nameWithOctave \
+                and abs(merged[-1].offset + merged[-1].duration.quarterLength
+                        - el.offset) < 1e-6:
+            merged[-1].duration.quarterLength += el.duration.quarterLength
+        elif merged and el.isRest and merged[-1].isRest \
+                and abs(merged[-1].offset + merged[-1].duration.quarterLength
+                        - el.offset) < 1e-6:
+            merged[-1].duration.quarterLength += el.duration.quarterLength
+        else:
+            merged.append(el)
+    return merged

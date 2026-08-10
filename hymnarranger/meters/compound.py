@@ -111,7 +111,8 @@ def presets():
     }
 
 
-BASS_LED = ['bass_chords', 'bass_single', 'bass_thirds']
+# Розділ, де мелодію веде ліва рука: тільки терції й сексти.
+BASS_LED = 'bass_thirds'
 
 
 def suite_plan():

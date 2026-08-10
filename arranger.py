@@ -4,7 +4,7 @@
 import argparse
 from pathlib import Path
 
-from hymnarranger import arrange, arrange_suite, arrange_multi, parse_input
+from hymnarranger import arrange, arrange_suite, arrange_multi, parse_input, save
 from hymnarranger import meters
 
 HERE = Path(__file__).resolve().parent
@@ -52,23 +52,23 @@ def main():
         return
 
     if a.suite:
-        arrange_suite(str(in_path), seed=a.seed).write('mxl', fp=str(out_path))
+        save(arrange_suite(str(in_path), seed=a.seed), out_path)
         print(f'Сюїта -> {out_path}')
     elif a.merge:
-        arrange_multi(str(in_path), presets=list(PRESETS),
-                      preset_map=PRESETS).write('mxl', fp=str(out_path))
+        save(arrange_multi(str(in_path), presets=list(PRESETS),
+                           preset_map=PRESETS), out_path)
         print(f'Склеєна партитура ({len(PRESETS)} розділів) -> {out_path}')
     elif a.all:
         for nm, cfg in PRESETS.items():
             fp = out_path.with_name(f'{out_path.stem}__{nm}.mxl')
-            arrange(str(in_path), cfg).write('mxl', fp=str(fp))
+            save(arrange(str(in_path), cfg), fp)
             print(f'{cfg.name:34s} -> {fp}')
     else:
         name = a.preset or next(iter(PRESETS))
         if name not in PRESETS:
             raise SystemExit(f'Пресет {name!r} недоступний для розміру {ts.ratioString}. '
                              f'Доступні: {", ".join(PRESETS)}')
-        arrange(str(in_path), PRESETS[name]).write('mxl', fp=str(out_path))
+        save(arrange(str(in_path), PRESETS[name]), out_path)
         print(f'{PRESETS[name].name} -> {out_path}')
 
 

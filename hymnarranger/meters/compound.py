@@ -71,41 +71,41 @@ LH_POOL = ('compound_march', 'compound_alt', 'compound_beat')
 def presets():
     return {
         'theme': ArrangeConfig(
-            mode='melody_plain', lh_pattern='compound_beat',
+            tempo=50, mode='melody_plain', lh_pattern='compound_beat',
             name='Тема'),
 
         # Обігравання вісімками = три ноти на долю. Фігура — арпеджіо,
         # бо саме розкладений акорд лягає на тридольну групу.
         'eighths_arp': ArrangeConfig(
-            unit_ql=0.5, tight_figure='arpeggio', max_parts=6,
+            tempo=54, unit_ql=0.5, tight_figure='arpeggio', max_parts=6,
             lh_pattern='compound_march',
             name='Оспівування арпеджіо (вісімки)'),
 
         # Шістнадцяті — шість нот на долю, теж арпеджіо.
         'sixteenths_arp': ArrangeConfig(
-            unit_ql=0.25, tight_figure='arpeggio', max_parts=12,
+            tempo=46, unit_ql=0.25, tight_figure='arpeggio', max_parts=12,
             lh_pattern='compound_march',
             name='Шістнадцяті арпеджіо'),
 
         'two_voice_arp': ArrangeConfig(
-            mode='two_voice_arp', arp_shape=(0, 1, 2),
+            tempo=50, mode='two_voice_arp', arp_shape=(0, 1, 2),
             lh_pattern='compound_beat',
             name='Два голоси: мелодія + арпеджіо'),
 
         'bass_chords': ArrangeConfig(
-            mode='bass_melody_chords', pulse_floor_midi=64,
+            tempo=48, mode='bass_melody_chords', pulse_floor_midi=64,
             pulse_unit_ql=0.5, max_parts=3,
             name='Мелодія в басі / тризвуки'),
         'bass_single': ArrangeConfig(
-            mode='bass_melody_dyad', pulse_floor_midi=67,
+            tempo=48, mode='bass_melody_dyad', pulse_floor_midi=67,
             pulse_unit_ql=0.5, max_parts=3,
             name='Мелодія в басі / пауза-нота-двозвук'),
         'bass_thirds': ArrangeConfig(
-            mode='bass_melody_thirds',
+            tempo=44, mode='bass_melody_thirds',
             name='Мелодія в басі / терції-сексти'),
 
         'chord_melody_8va': ArrangeConfig(
-            mode='chord_melody', octave_shift=1, rh_max_midi=100,
+            tempo=40, mode='chord_melody', octave_shift=1, rh_max_midi=100,
             lh_pattern='compound_beat',
             name='Акордова мелодія (октавою вище)'),
     }

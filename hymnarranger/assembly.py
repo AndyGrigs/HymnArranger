@@ -7,6 +7,7 @@ from typing import Optional, List
 
 from music21 import (
     stream, note, chord, clef, key, meter, layout, tempo, expressions, bar,
+    instrument, duration,
 )
 
 from .model import ArrangeContext, ArrangeConfig
@@ -34,10 +35,42 @@ def build_hands(ctx: ArrangeContext, cfg: ArrangeConfig):
     return build_right_hand(ctx, cfg), build_left_hand(ctx, cfg)
 
 
+DEFAULT_TEMPO = 84
+
+
+def tempo_mark(cfg: Optional[ArrangeConfig], ctx: ArrangeContext):
+    """
+    Мітка темпу з референтом = ДОЛЯ цього розміру.
+    У 4/4 виходить "чвертка = N", у 6/8 — "чвертка з крапкою = N",
+    тому число в пресеті означає одне й те саме в обох сімействах.
+    """
+    n = (cfg.tempo if cfg and cfg.tempo else DEFAULT_TEMPO)
+    ref = duration.Duration(ctx.ts.beatDuration.quarterLength)
+    mm = tempo.MetronomeMark(number=n, referent=ref)
+    mm.numberSounding = None
+    return mm
+
+
+def make_instrument(name: str = 'Accordion'):
+    """
+    Інструмент партії. Потрапляє в MusicXML як <score-instrument>
+    з midi-program, тому файл одразу звучить баяном, а не роялем.
+    """
+    try:
+        inst = getattr(instrument, name)()
+    except Exception:
+        inst = instrument.Accordion()
+    inst.partName = 'Баян'
+    inst.instrumentName = 'Баян'
+    return inst
+
+
 def _assemble_part(elements, ctx: ArrangeContext, cl: clef.Clef,
-                   part_id: str, name: str) -> stream.Part:
+                   part_id: str, name: str, cfg: Optional[ArrangeConfig] = None
+                   ) -> stream.Part:
     p = stream.Part(id=part_id)
     p.partName = name
+    p.insert(0, make_instrument(cfg.instrument_name if cfg else 'Accordion'))
     p.insert(0, cl)
     p.insert(0, key.KeySignature(ctx.key.sharps))
     p.insert(0, meter.TimeSignature(ctx.ts.ratioString))
@@ -63,14 +96,15 @@ def _assemble_part(elements, ctx: ArrangeContext, cl: clef.Clef,
     return p
 
 
-def _assemble_two_voice(voices, ctx, cl, part_id, name) -> stream.Part:
+def _assemble_two_voice(voices, ctx, cl, part_id, name, cfg=None) -> stream.Part:
     """Збирає ОДИН нотоносець із кількох незалежних голосів.
     music21 виводить їх у MusicXML як <voice>1</voice> / <voice>2</voice>."""
-    built = [_assemble_part(v, ctx, cl, f'{part_id}-v{i}', name)
+    built = [_assemble_part(v, ctx, cl, f'{part_id}-v{i}', name, cfg)
              for i, v in enumerate(voices)]
 
     p = stream.Part(id=part_id)
     p.partName = name
+    p.insert(0, make_instrument(cfg.instrument_name if cfg else 'Accordion'))
     mss = [list(b.getElementsByClass(stream.Measure)) for b in built]
     n = max(len(ms) for ms in mss)
     for i in range(n):
@@ -106,13 +140,15 @@ def arrange(source, cfg: Optional[ArrangeConfig] = None,
 
     if isinstance(rh_elems, tuple):
         rh = _assemble_two_voice(rh_elems, ctx, clef.TrebleClef(),
-                                 'right-hand', 'Права рука')
+                                 'right-hand', 'Права рука', cfg)
     else:
-        rh = _assemble_part(rh_elems, ctx, clef.TrebleClef(), 'right-hand', 'Права рука')
-    lh = _assemble_part(lh_elems, ctx, clef.BassClef(), 'left-hand', 'Ліва рука')
+        rh = _assemble_part(rh_elems, ctx, clef.TrebleClef(),
+                            'right-hand', 'Права рука', cfg)
+    lh = _assemble_part(lh_elems, ctx, clef.BassClef(),
+                        'left-hand', 'Ліва рука', cfg)
 
     sc = stream.Score()
-    sc.insert(0, tempo.MetronomeMark(number=96))
+    rh.insert(0, tempo_mark(cfg, ctx))
     sc.insert(0, rh)
     sc.insert(0, lh)
     sc.insert(0, layout.StaffGroup([rh, lh], name='Баян', symbol='brace',
@@ -144,6 +180,9 @@ def arrange_multi(source, presets: Optional[List[str]] = None,
     lh_all = stream.Part(id='left-hand');  lh_all.partName = 'Ліва рука'
     rh_all.insert(0, clef.TrebleClef())
     lh_all.insert(0, clef.BassClef())
+    inst_name = cfgs[0].instrument_name if cfgs else 'Accordion'
+    for part in (rh_all, lh_all):
+        part.insert(0, make_instrument(inst_name))
     for part in (rh_all, lh_all):
         part.insert(0, key.KeySignature(ctx.key.sharps))
         part.insert(0, meter.TimeSignature(ctx.ts.ratioString))
@@ -161,11 +200,12 @@ def arrange_multi(source, presets: Optional[List[str]] = None,
             last = dst.getElementsByClass(stream.Measure)[-1]
             last.rightBarline = bar.Barline('final' if idx == len(cfgs) - 1
                                             else 'double')
-        mark = expressions.RehearsalMark(cfg.name)
         first_new = [m for m in rh_all.getElementsByClass(stream.Measure)
                      if abs(m.offset - cursor) < 1e-6]
         if first_new:
-            first_new[0].insert(0, mark)
+            first_new[0].insert(0, expressions.RehearsalMark(cfg.name))
+            # свій темп на кожен розділ
+            first_new[0].insert(0, tempo_mark(cfg, ctx))
         cursor += one.parts[0].duration.quarterLength
 
     for part in (rh_all, lh_all):
@@ -173,7 +213,6 @@ def arrange_multi(source, presets: Optional[List[str]] = None,
             m.number = i
 
     sc = stream.Score()
-    sc.insert(0, tempo.MetronomeMark(number=96))
     sc.insert(0, rh_all)
     sc.insert(0, lh_all)
     sc.insert(0, layout.StaffGroup([rh_all, lh_all], name='Баян',
@@ -183,4 +222,67 @@ def arrange_multi(source, presets: Optional[List[str]] = None,
 
 def to_musicxml_string(sc: stream.Score) -> str:
     from music21.musicxml.m21ToXml import GeneralObjectExporter
-    return GeneralObjectExporter(sc).parse().decode('utf-8')
+    return _inject_instrument_sound(
+        GeneralObjectExporter(sc).parse().decode('utf-8'))
+
+
+# =================================================================
+#  ЗБЕРЕЖЕННЯ З КОРЕКТНИМ ІНСТРУМЕНТОМ
+# =================================================================
+
+INSTRUMENT_SOUND = 'keyboard.accordion'
+
+
+def _inject_instrument_sound(xml: str, sound: str = INSTRUMENT_SOUND) -> str:
+    """
+    Дописує <instrument-sound> у кожен <score-instrument>.
+
+    Експортер music21 його не пише (у коді там прямо стоїть
+    "TODO: instrument-sound"), а MuseScore саме за цим тегом розпізнає
+    інструмент. Без нього залишається лише midi-program, і частина
+    програвачів усе одно бере рояль за замовчуванням.
+    """
+    if '<instrument-sound>' in xml or '<score-instrument' not in xml:
+        return xml
+    out, idx = [], 0
+    tag = '</score-instrument>'
+    while True:
+        j = xml.find(tag, idx)
+        if j < 0:
+            out.append(xml[idx:])
+            break
+        out.append(xml[idx:j])
+        out.append(f'  <instrument-sound>{sound}</instrument-sound>\n      ')
+        out.append(tag)
+        idx = j + len(tag)
+    return ''.join(out)
+
+
+def save(score: stream.Score, path, sound: str = INSTRUMENT_SOUND) -> str:
+    """
+    Записує партитуру у .mxl або .musicxml так, щоб вона одразу звучала
+    баяном. Використовуй замість score.write() — той інструмента не донесе.
+    """
+    import os
+    import tempfile
+    import zipfile
+
+    path = str(path)
+    with tempfile.TemporaryDirectory() as tmp:
+        raw = os.path.join(tmp, 'score.musicxml')
+        score.write('musicxml', fp=raw)
+        xml = _inject_instrument_sound(open(raw, encoding='utf-8').read(), sound)
+
+    if path.lower().endswith('.mxl'):
+        inner = os.path.basename(path)[:-4] + '.musicxml'
+        container = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                     '<container>\n  <rootfiles>\n'
+                     f'    <rootfile full-path="{inner}"/>\n'
+                     '  </rootfiles>\n</container>\n')
+        with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:
+            z.writestr('META-INF/container.xml', container)
+            z.writestr(inner, xml)
+    else:
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write(xml)
+    return path

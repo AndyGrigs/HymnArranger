@@ -100,4 +100,6 @@ class ArrangeConfig:
     arp_shape: Tuple[int, ...] = (0, 1, 2, 1)   # індекси тонів акорду у фігурі
     thirds_floor_midi: int = 64       # E4 — низ регістру для режиму 2г
     thirds_note_beats: float = 2.0    # тривалість ноти супроводу В ДОЛЯХ (2г)
+    tempo: Optional[int] = None
+    instrument_name: str = 'Accordion'
     name: str = 'default'

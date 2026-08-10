@@ -1,7 +1,5 @@
-"""Дводольна доля: 2/4, 3/4, 4/4 — усе, що працювало досі.
+"""Дводольна доля: 2/4, 3/4, 4/4
 
-Логіка не змінена: цей модуль існує, щоб тридольні розміри не тягли
-за собою умовних гілок усередині спільного коду.
 """
 
 from __future__ import annotations
@@ -76,34 +74,34 @@ LH_POOL = ('auto', 'bass_chord', 'bass_alt_fifth', 'eighth_march', 'eighth_alt')
 
 def presets():
     return {
-        'eighths_ct':    ArrangeConfig(unit_ql=0.5, second_strategy='chord_tone',
+        'eighths_ct':    ArrangeConfig(tempo=96, unit_ql=0.5, second_strategy='chord_tone',
                                        name='Вісімки / акордовий тон'),
-        'eighths_nb':    ArrangeConfig(unit_ql=0.5, second_strategy='neighbor_away',
+        'eighths_nb':    ArrangeConfig(tempo=92, unit_ql=0.5, second_strategy='neighbor_away',
                                        name='Вісімки / допоміжний тон'),
-        'sixteenths_nb': ArrangeConfig(unit_ql=0.25, tight_figure='neighbor', max_parts=16,
+        'sixteenths_nb': ArrangeConfig(tempo=80, unit_ql=0.25, tight_figure='neighbor', max_parts=16,
                                        name='Шістнадцяті / оспівування'),
-        'sixteenths_arp': ArrangeConfig(unit_ql=0.25, tight_figure='arpeggio', max_parts=16,
+        'sixteenths_arp': ArrangeConfig(tempo=80, unit_ql=0.25, tight_figure='arpeggio', max_parts=16,
                                         name='Шістнадцяті / арпеджіо'),
-        'mixed':         ArrangeConfig(unit_ql=0.5, cadence_unit_ql=0.25,
+        'mixed':         ArrangeConfig(tempo=88, unit_ql=0.5, cadence_unit_ql=0.25,
                                        name='Мікс (каденції — 16-ті)'),
-        'waltz':         ArrangeConfig(unit_ql=0.5, lh_pattern='waltz', name='Вальс'),
-        'theme':         ArrangeConfig(mode='melody_plain',
+        'waltz':         ArrangeConfig(tempo=100, unit_ql=0.5, lh_pattern='waltz', name='Вальс'),
+        'theme':         ArrangeConfig(tempo=84, mode='melody_plain',
                                        name='Тема'),
-        'two_voice_arp': ArrangeConfig(mode='two_voice_arp',
+        'two_voice_arp': ArrangeConfig(tempo=84, mode='two_voice_arp',
                                        name='Два голоси: мелодія + арпеджіо 16-ми'),
-        'chord_melody':  ArrangeConfig(mode='chord_melody',
+        'chord_melody':  ArrangeConfig(tempo=72, mode='chord_melody',
                                        name='Акордова мелодія'),
-        'chord_melody_8va': ArrangeConfig(mode='chord_melody', octave_shift=1,
+        'chord_melody_8va': ArrangeConfig(tempo=66, mode='chord_melody', octave_shift=1,
                                           rh_max_midi=100,
                                           name='Акордова мелодія (октавою вище)'),
-        'bass_chords_8': ArrangeConfig(mode='bass_melody_chords', pulse_floor_midi=64, pulse_unit_ql=0.5, max_parts=4,
+        'bass_chords_8': ArrangeConfig(tempo=80, mode='bass_melody_chords', pulse_floor_midi=64, pulse_unit_ql=0.5, max_parts=4,
                                        name='Мелодія в басі / тризвуки вісімками'),
-        'bass_single':   ArrangeConfig(mode='bass_melody_dyad', pulse_floor_midi=67,
+        'bass_single':   ArrangeConfig(tempo=80, mode='bass_melody_dyad', pulse_floor_midi=67,
                                        pulse_unit_ql=0.25, max_parts=4,
                                        name='Мелодія в басі / пауза-нота-двозвук'),
-        'bass_thirds':   ArrangeConfig(mode='bass_melody_thirds',
+        'bass_thirds':   ArrangeConfig(tempo=72, mode='bass_melody_thirds',
                                        name='Мелодія в басі / терції-сексти'),
-        'bass_chords':   ArrangeConfig(mode='bass_melody_chords', pulse_floor_midi=64, pulse_unit_ql=0.25, max_parts=4,
+        'bass_chords':   ArrangeConfig(tempo=76, mode='bass_melody_chords', pulse_floor_midi=64, pulse_unit_ql=0.25, max_parts=4,
                                        name='Мелодія в басі / тризвуки шістнадцятими'),
     }
 

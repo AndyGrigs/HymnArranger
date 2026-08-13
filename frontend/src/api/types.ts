@@ -89,4 +89,5 @@ export type ScoreSource = File | { musicxml: string }
 export interface SuiteParams {
   seed?: number | null
   vary_bass?: boolean
+  [key: string]: unknown
 }

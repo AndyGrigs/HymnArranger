@@ -11,14 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from .assembly import arrange, arrange_multi, save
+from .assembly import arrange, arrange_multi, save, to_musicxml_string
 from .meters import presets, is_compound
 from .parsing import parse_input
-from .suite import arrange_suite
+from .suite import arrange_suite, resolve_suite
 
 
 class ScoreIn(BaseModel):
-    xml: str  # MusicXML content as a string
+    musicxml: str
 
 
 async def _read_source(
@@ -32,9 +32,10 @@ async def _read_source(
             return Path(tmp.name)
     if body is not None:
         with tempfile.NamedTemporaryFile(suffix='.xml', delete=False, mode='w', encoding='utf-8') as tmp:
-            tmp.write(body.xml)
+            tmp.write(body.musicxml)
             return Path(tmp.name)
-    raise HTTPException(422, 'Provide either a file upload or a JSON body with "xml" field.')
+    raise HTTPException(422, 'Provide either a file upload or a JSON body with "musicxml" field.')
+
 
 app = FastAPI(title='HymnArranger API')
 
@@ -51,66 +52,183 @@ def health():
     return {'status': 'ok'}
 
 
-@app.post('/presets')
-async def list_presets(file: UploadFile = File(...)):
-    with tempfile.NamedTemporaryFile(suffix=Path(file.filename).suffix, delete=False) as tmp:
-        tmp.write(await file.read())
-        tmp_path = Path(tmp.name)
-    try:
-        ctx = parse_input(str(tmp_path))
-        ps = presets(ctx.ts)
-        kind = 'compound' if is_compound(ctx.ts) else 'simple'
-        return {'meter': ctx.ts.ratioString, 'kind': kind,
-                'presets': [{'id': k, 'name': v.name} for k, v in ps.items()]}
-    finally:
-        tmp_path.unlink(missing_ok=True)
-
-
-@app.post('/arrange')
-async def arrange_file(
-    file: UploadFile = File(...),
-    preset: str = Query(default=None),
-    mode: str = Query(default='single'),  # 'single' | 'all' | 'suite'
+@app.post('/analyze')
+async def analyze(
+    file: Optional[UploadFile] = File(None),
+    body: Optional[ScoreIn] = Body(None),
+    seed: Optional[int] = Query(None),
 ):
-    suffix = Path(file.filename).suffix or '.mxl'
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(await file.read())
-        tmp_path = Path(tmp.name)
-
-    out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
-    out.close()
-    out_path = Path(out.name)
-
+    path = await _read_source(file, body)
     try:
-        ctx = parse_input(str(tmp_path))
+        ctx = parse_input(str(path))
         ps = presets(ctx.ts)
-
-        if mode == 'suite':
-            score = arrange_suite(str(tmp_path))
-        elif mode == 'all':
-            score = arrange_multi(str(tmp_path), presets=list(ps), preset_map=ps)
-        else:
-            name = preset or next(iter(ps))
-            if name not in ps:
-                raise HTTPException(400, f'Unknown preset {name!r}. Available: {", ".join(ps)}')
-            score = arrange(str(tmp_path), ps[name])
-
-        save(score, out_path)
-        return FileResponse(str(out_path), media_type='application/octet-stream',
-                            filename=Path(file.filename).stem + '_arranged.mxl')
+        suite_names = resolve_suite(ctx.ts, seed=seed)
+        measures = round(ctx.total_ql / ctx.ts.barDuration.quarterLength)
+        return {
+            'meter': ctx.ts.ratioString,
+            'meter_family': 'compound' if is_compound(ctx.ts) else 'simple',
+            'key': ctx.key.name,
+            'sharps': ctx.key.sharps,
+            'measures': measures,
+            'total_ql': ctx.total_ql,
+            'pickup_ql': ctx.pickup_ql,
+            'chord_source': ctx.chord_source,
+            'chords': [{'offset': off, 'figure': cs.figure} for off, cs in ctx.chords],
+            'warnings': ctx.warnings,
+            'presets': [
+                {'id': k, 'name': v.name, 'tempo': v.tempo or 84, 'mode': v.mode}
+                for k, v in ps.items()
+            ],
+            'suite': [
+                {
+                    'index': i + 1,
+                    'preset': n,
+                    'name': ps[n].name,
+                    'tempo': ps[n].tempo or 84,
+                    'bass': ps[n].lh_pattern,
+                }
+                for i, n in enumerate(suite_names)
+            ],
+        }
     except HTTPException:
         raise
     except Exception as exc:
         raise HTTPException(500, str(exc)) from exc
     finally:
-        tmp_path.unlink(missing_ok=True)
+        path.unlink(missing_ok=True)
+
+
+@app.post('/arrange')
+async def arrange_endpoint(
+    file: Optional[UploadFile] = File(None),
+    body: Optional[ScoreIn] = Body(None),
+    preset: Optional[str] = Query(None),
+    download: bool = Query(False),
+):
+    path = await _read_source(file, body)
+    stem = Path(file.filename).stem if file else 'arranged'
+    try:
+        ctx = parse_input(str(path))
+        ps = presets(ctx.ts)
+        name = preset or next(iter(ps))
+        if name not in ps:
+            raise HTTPException(400, f'Unknown preset {name!r}. Available: {", ".join(ps)}')
+        cfg = ps[name]
+        score = arrange(str(path), cfg)
+
+        if download:
+            out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
+            out.close()
+            out_path = Path(out.name)
+            save(score, out_path)
+            return FileResponse(str(out_path), media_type='application/octet-stream',
+                                filename=stem + '_arranged.mxl')
+
+        return {
+            'musicxml': to_musicxml_string(score),
+            'preset': name,
+            'name': cfg.name,
+            'tempo': cfg.tempo or 84,
+            'meter': ctx.ts.ratioString,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(500, str(exc)) from exc
+    finally:
+        path.unlink(missing_ok=True)
+
+
+@app.post('/suite')
+async def suite_endpoint(
+    file: Optional[UploadFile] = File(None),
+    body: Optional[ScoreIn] = Body(None),
+    seed: Optional[int] = Query(None),
+    vary_bass: bool = Query(True),
+    download: bool = Query(False),
+):
+    path = await _read_source(file, body)
+    stem = Path(file.filename).stem if file else 'suite'
+    try:
+        ctx = parse_input(str(path))
+        ps = presets(ctx.ts)
+        suite_names = resolve_suite(ctx.ts, seed=seed)
+        score = arrange_suite(str(path), seed=seed, vary_bass=vary_bass)
+
+        if download:
+            out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
+            out.close()
+            out_path = Path(out.name)
+            save(score, out_path)
+            return FileResponse(str(out_path), media_type='application/octet-stream',
+                                filename=stem + '_suite.mxl')
+
+        return {
+            'musicxml': to_musicxml_string(score),
+            'meter': ctx.ts.ratioString,
+            'meter_family': 'compound' if is_compound(ctx.ts) else 'simple',
+            'seed': seed,
+            'sections': [
+                {
+                    'index': i + 1,
+                    'preset': n,
+                    'name': ps[n].name,
+                    'tempo': ps[n].tempo or 84,
+                    'bass': ps[n].lh_pattern,
+                }
+                for i, n in enumerate(suite_names)
+            ],
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(500, str(exc)) from exc
+    finally:
+        path.unlink(missing_ok=True)
+
+
+@app.post('/merge')
+async def merge_endpoint(
+    file: Optional[UploadFile] = File(None),
+    body: Optional[ScoreIn] = Body(None),
+    download: bool = Query(False),
+):
+    path = await _read_source(file, body)
+    stem = Path(file.filename).stem if file else 'merge'
+    try:
+        ctx = parse_input(str(path))
+        ps = presets(ctx.ts)
+        preset_names = list(ps)
+        score = arrange_multi(str(path), presets=preset_names, preset_map=ps)
+
+        if download:
+            out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
+            out.close()
+            out_path = Path(out.name)
+            save(score, out_path)
+            return FileResponse(str(out_path), media_type='application/octet-stream',
+                                filename=stem + '_merge.mxl')
+
+        return {
+            'musicxml': to_musicxml_string(score),
+            'meter': ctx.ts.ratioString,
+            'sections': [{'preset': k, 'name': v.name} for k, v in ps.items()],
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(500, str(exc)) from exc
+    finally:
+        path.unlink(missing_ok=True)
 
 
 @app.post('/midi')
-async def midi(file: Optional[UploadFile] = File(None),
-               body: Optional[ScoreIn] = Body(None),
-               seed: Optional[int] = Query(None),
-               preset: Optional[str] = Query(None)):
+async def midi(
+    file: Optional[UploadFile] = File(None),
+    body: Optional[ScoreIn] = Body(None),
+    seed: Optional[int] = Query(None),
+    preset: Optional[str] = Query(None),
+):
     """
     Та сама музика у форматі MIDI.
 
@@ -132,7 +250,6 @@ async def midi(file: Optional[UploadFile] = File(None),
             raise HTTPException(400, f'Unknown preset {name!r}. Available: {", ".join(ps)}')
         score = arrange(str(path), ps[name])
 
-        import music21
         score.write('midi', fp=str(out_path))
 
         stem = Path(file.filename).stem if file else 'arranged'

@@ -1,12 +1,12 @@
 # 🎵 HymnArranger
 
-> KI-gestützte Web-App zur automatischen Harmonisierung christlicher Kirchenlieder
+> Regelbasierter, deterministischer Generator für Bajan-(Knopfakkordeon-)Arrangements aus einer einstimmigen Melodie
 
-[![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-Python-green.svg)](https://fastapi.tiangolo.com/)
-[![Hugging Face](https://img.shields.io/badge/🤗-Hugging%20Face-yellow.svg)](https://huggingface.co/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-In%20Entwicklung-yellow.svg)]()
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![music21](https://img.shields.io/badge/music21-10.5.0-informational.svg)](https://web.mit.edu/music21/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.141-green.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18%20%2B%20Vite-61DAFB.svg)](https://react.dev/)
+[![Status](https://img.shields.io/badge/Status-Active%20Development-yellow.svg)]()
 
 ---
 
@@ -14,127 +14,162 @@
 
 ---
 
-## Projektbeschreibung
+## 📖 Projektbeschreibung
 
-**HymnArranger** ist eine vollständige Web-Anwendung, die ein ML-Modell verwendet, um Melodien christlicher Kirchenlieder automatisch zu arrangieren. Der Nutzer lädt eine Melodie hoch, wählt einen Stil (Bajan, Klavier, Streicher) und erhält ein fertiges Arrangement direkt im Browser — mit der Möglichkeit, PDF, MIDI oder MusicXML herunterzuladen.
+**HymnArranger** nimmt eine einstimmige Melodie (MusicXML) entgegen und erzeugt daraus ein vollständiges zweihändiges Bajan-Arrangement — eine figurierte Melodiestimme in der rechten Hand und eine Stradella-Bassbegleitung in der linken — mithilfe einer **deterministischen, regelbasierten Engine** auf Basis von [music21](https://web.mit.edu/music21/), nicht eines Black-Box-Modells.
+
+Das Repertoire christlicher Kirchenlieder dient als Arbeitskorpus, und die musikalischen Regeln beruhen auf der eigenen Erfahrung des Autors als Bajan-Spieler und Arrangeur. Die Engine selbst richtet sich an jeden Musiker bzw. Arrangeur, der mit melodischem Material arbeitet — Bajan ist der erste umgesetzte Instrumentalstil.
+
+Separat wurde ein vollständig trainiertes neuronales Netz als **Forschungs-Baseline** entwickelt und evaluiert, um die Wahl des regelbasierten Ansatzes zu begründen (siehe [ML-Baseline](#-ml-baseline-forschungszweig) unten). Es ist nicht Teil des ausgelieferten Produkts.
 
 ---
 
-## 🏗️ Produktarchitektur
+## 🏗️ Architektur
 
 ```
-┌─────────────────────────────────────┐
-│           FRONTEND (UI)             │
-│  - Melodie hochladen                │
-│  - Stil wählen (Bajan / Klavier)    │
-│  - Noten online ansehen             │
-│  - PDF / MIDI herunterladen         │
-└────────────────┬────────────────────┘
-                 │ REST API
-┌────────────────▼────────────────────┐
-│           BACKEND (API)             │
-│  - MusicXML / MIDI verarbeiten      │
-│  - ML-Modell aufrufen               │
-│  - PDF-Erzeugung via MuseScore      │
-│  - Ergebnisse speichern             │
-└────────────────┬────────────────────┘
-                 │
-┌────────────────▼────────────────────┐
-│           ML-MODELL                 │
-│  - Fine-tuned Music Transformer     │
-│  - Hugging Face Inferenz            │
-└─────────────────────────────────────┘
+┌───────────────────────────────────────┐
+│    FRONTEND — React + Vite + TS        │
+│  - Melodie hochladen oder im           │
+│    eingebetteten Flat.io-Editor        │
+│    eingeben                            │
+│  - Preset / Suite / "Alle"-Modus wählen│
+│  - Notenvorschau (OpenSheetMusicDisplay)│
+│  - MIDI-Wiedergabe (GM Accordion)      │
+│  - MusicXML / MIDI herunterladen       │
+└───────────────────┬─────────────────────┘
+                     │ REST
+┌───────────────────▼─────────────────────┐
+│    BACKEND — FastAPI (Python)           │
+│  GET  /health                           │
+│  POST /presets   — Taktart + Presets    │
+│  POST /arrange    — mode=single|all|suite│
+│  POST /midi                             │
+└───────────────────┬─────────────────────┘
+                     │
+┌───────────────────▼─────────────────────┐
+│  ARRANGEMENT-ENGINE — hymnarranger/      │
+│  (music21, regelbasiert, deterministisch)│
+│  - Parsing, Harmonik, Figuration         │
+│  - linke Hand Stradella + Voice Leading  │
+│  - Textur-Presets je Taktart-Typ         │
+│  - Suite: Thema + Variationen (Seed)     │
+└───────────────────────────────────────────┘
+
+   Separater Forschungszweig (nicht produktiv im Einsatz):
+   ein Encoder-Decoder Music Transformer (RPR), trainiert auf
+   Google Colab, dokumentiert als Vergleichs-Baseline.
 ```
 
----
-
-## Zielgruppe
-
-- **Musiker in Kirchengemeinden** — schnelle Erstellung von Arrangements für Gottesdienste
-- **ML-Entwickler** — Beispiel für den Einsatz von Transformern zur symbolischen Musikgenerierung
-- **Musiklehrer** — Werkzeug zur Veranschaulichung von Melodieharmonisierung
-- **Alle Interessierten** an der Schnittstelle von Künstlicher Intelligenz und Musik
+> ⚠️ **Bekannte Lücke:** Der API-Client im Frontend ruft derzeit `/analyze`, `/suite` und `/merge` auf, die im aktuellen Backend nicht implementiert sind (`hymnarranger/api.py` stellt nur `/health`, `/presets`, `/arrange`, `/midi` bereit). Das muss abgeglichen werden, bevor die Oberfläche durchgängig funktioniert — siehe [Aktueller Status](#-aktueller-status).
 
 ---
 
-## Funktionen
+## 🎯 Zielgruppe
 
-- 🎼 Eingabe einer Melodie im Format MusicXML oder MIDI
-- 🪗 Generierung eines Arrangements im gewählten Stil (Bajan, Klavier, Streicher)
-- 👁️ Notenansicht direkt im Browser (OpenSheetMusicDisplay)
-- 📄 Download des Ergebnisses als PDF, MIDI oder MusicXML
-- ☁️ ML-Modell gehostet auf Hugging Face Spaces
+- **Arrangeure und Musiker**, die einen schnellen, idiomatischen Ausgangspunkt für ein Bajan-Arrangement suchen
+- **Bajan-/Akkordeonspieler**, die fertige Textur-Variationen zu einer bekannten Melodie suchen
+- **Kirchenmusiker** — der Liederkorpus macht das Tool direkt für Gottesdienste nutzbar
+- **ML-/Software-Entwickler**, die sich für einen dokumentierten Vergleich zwischen regelbasiertem und neuronalem Ansatz zur symbolischen Musikgenerierung interessieren
 
 ---
 
-## Technologien
+## ✨ Funktionen
+
+- 🎼 Nimmt eine einstimmige Melodie im MusicXML-Format entgegen (`.xml`, `.musicxml`, `.mxl`)
+- 🪗 Deterministische, regelbasierte Arrangement-Engine — ohne Modellinferenz
+- 🎹 Über ein Dutzend Textur-Presets, getrennte Sätze für einfache (2/4, 3/4, 4/4) und zusammengesetzte (6/8, 9/8, 12/8) Taktarten
+- 🎻 Linke Hand nach Stradella-System mit Voice-Leading-Optimierung
+- 🧩 Suite-Modus: Thema + eine Folge von Variationen, reproduzierbar über einen Zufalls-Seed
+- 📚 "Alle Presets"-Modus: jede Textur nacheinander in einer Partitur, zum Vergleich
+- 👁️ Notenvorschau im Browser (OpenSheetMusicDisplay) und MIDI-Wiedergabe (GM-Accordion-Programm)
+- ✍️ Melodie direkt im Browser über einen eingebetteten Flat.io-Editor eingeben, oder Datei hochladen
+- 📄 Ergebnis als MusicXML oder MIDI herunterladen
+- 🧪 Dokumentierte neuronale Baseline zum methodischen Vergleich (siehe unten)
+
+---
+
+## 🛠️ Technologien
 
 | Teil | Technologie | Warum |
-|------|------------|-------|
-| **Frontend** | Next.js + TypeScript | Schnelle Entwicklung, SSR |
-| **UI-Komponenten** | Tailwind + shadcn/ui | Schnell und schön |
-| **Notenansicht** | OpenSheetMusicDisplay | MusicXML-Rendering im Browser |
-| **Backend** | Python FastAPI | Ideal für ML-Integration |
-| **ML-Modell** | Hugging Face + PyTorch | Fine-tuned Transformer |
-| **Konvertierung** | music21 + MuseScore CLI | MusicXML → PDF / MIDI |
-| **Datenbank** | PostgreSQL | Speicherung von Songs und Ergebnissen |
-| **Modell-Hosting** | Hugging Face Spaces | Kostenlos für Demo |
-| **Deployment** | AWS / Vercel + Railway | Bewährter Stack |
+|------|-----------|-----|
+| **Frontend** | React 18 + TypeScript + Vite | Schneller Entwicklungszyklus, typisierte API-Schicht |
+| **Styling** | Tailwind CSS v4 | Utility-first, kaum Konfigurationsaufwand |
+| **Notendarstellung** | OpenSheetMusicDisplay | MusicXML-Rendering im Browser |
+| **MIDI-Wiedergabe** | html-midi-player | Web-Component-Player, GM-Soundfont |
+| **Notation im Browser** | Flat.io Embed SDK | Melodie eingeben, ohne die App zu verlassen |
+| **Backend** | Python + FastAPI + Uvicorn | Dünne HTTP-Schicht über der Engine |
+| **Arrangement-Engine** | music21 | Parsing & Generierung symbolischer Musik |
+| **ML-Baseline (nur Forschung)** | PyTorch + Hugging Face Transformers | Encoder-Decoder Music Transformer mit RPR |
+| **Datensatzvorbereitung** | music21, Audiveris | Melodieextraktion, PDF → MusicXML |
+| **Tests** | pytest, httpx | Unit-Tests, FastAPI-Testclient |
 
 ---
 
-## Projektstruktur
+## 📁 Projektstruktur
 
 ```
 HymnArranger/
-├── frontend/                # Next.js App
-│   ├── app/
-│   │   ├── page.tsx         # Startseite
-│   │   ├── arrange/         # Arrangierseite
-│   │   └── results/         # Ergebnisansicht
-│   └── components/
-│       ├── MelodyUploader   # Datei-Upload
-│       ├── StyleSelector    # Stil-Auswahl
-│       └── SheetViewer      # Notenansicht
+├── arranger.py               # CLI-Einstiegspunkt
+├── commands.md                # Kurzreferenz der CLI-Befehle
+├── requirements.txt
 │
-├── backend/                 # FastAPI-Server
-│   ├── main.py              # Einstiegspunkt
-│   ├── routes/
-│   │   ├── arrange.py       # POST /arrange
-│   │   └── download.py      # GET /download/{id}
-│   ├── services/
-│   │   ├── ml_service.py    # Modellaufruf
-│   │   ├── music_service.py # music21-Verarbeitung
-│   │   └── pdf_service.py   # PDF-Erzeugung
-│   └── models/              # Pydantic-Schemas
+├── hymnarranger/               # Kernpaket — die Arrangement-Engine
+│   ├── parsing.py             # MusicXML → interner Kontext (absolute Offsets)
+│   ├── theory.py               # reine diatonische/harmonische Hilfsfunktionen
+│   ├── figuration.py           # Figurations-Engine der rechten Hand
+│   ├── textures.py             # alternative Texturen der rechten Hand
+│   ├── lefthand.py             # Stradella-Voicing + Voice-Leading-Optimierung
+│   ├── assembly.py             # Partitur-Zusammenbau, Instrument, MIDI-Export
+│   ├── suite.py                 # Planer für Thema + Variationen (Seed-basiert)
+│   ├── meters/
+│   │   ├── simple.py           # Presets für 2/4, 3/4, 4/4
+│   │   └── compound.py         # Presets für 6/8, 9/8, 12/8
+│   └── api.py                   # FastAPI-App (/health, /presets, /arrange, /midi)
 │
-├── ml/                      # ML-Teil
-│   ├── dataset/
-│   ├── notebooks/
-│   └── model/
+├── frontend/                    # React + Vite + TypeScript
+│   └── src/
+│       ├── api/                 # typisierter Client + Typen
+│       ├── components/          # FileDropzone, SheetViewer, ScoreEditor, ...
+│       ├── hooks/                 # useAnalysis, useArrangement
+│       └── lib/                    # Musik-Hilfsfunktionen, Download-Utilities
 │
-└── dataset/                 # Datensatz
+├── dataset/                       # 732 Melodie/Arrangement-Paare (222 Lieder)
+│   ├── melody/
+│   └── arrangement/
+│
+├── helpers/                       # Skripte zur Datensatzvorbereitung
+│   ├── split_variations.py
+│   ├── propagate_barlines.py
+│   ├── split_dataset.py
+│   ├── tokenize_dataset.py
+│   ├── check_dataset.py
+│   └── music21_fixes.py
+│
+├── input/                         # CLI-Arbeitsordner (Datei ablegen, arranger.py starten)
+└── output/                        # CLI-Ausgabeordner
 ```
 
 ---
 
-## Nutzerablauf
+## 🚀 Schnellstart
 
+### Backend + CLI
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# CLI
+python arranger.py melody.musicxml -p mixed -o out.musicxml   # ein Preset
+python arranger.py --all                                       # alle Presets, einzelne Dateien
+python arranger.py --merge                                     # alle Presets, eine Partitur
+python arranger.py --suite --seed 42                            # Thema + Variationen
+
+# HTTP-API
+uvicorn hymnarranger.api:app --reload
+# → http://127.0.0.1:8000/docs
 ```
-1. Nutzer lädt eine Melodie hoch (MusicXML oder MIDI)
-            ↓
-2. Wählt einen Stil: 🪗 Bajan / 🎹 Klavier / 🎻 Streicher
-            ↓
-3. Klickt auf „Arrangieren"
-            ↓
-4. Sieht die Noten direkt im Browser (OpenSheetMusicDisplay)
-            ↓
-5. Lädt PDF / MIDI / MusicXML herunter
-```
-
----
-
-## Schnellstart
 
 ### Frontend
 
@@ -144,66 +179,73 @@ npm install
 npm run dev
 ```
 
-### Backend
-
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
+> Während der Entwicklung leitet das Frontend `/api/*` an das Backend weiter. Wie oben erwähnt, müssen einige vom Frontend erwartete Endpunkte (`/analyze`, `/suite`, `/merge`) noch ergänzt bzw. mit dem Backend abgeglichen werden.
 
 ---
 
-## Datensatz
+## 🧠 ML-Baseline (Forschungszweig)
 
-Der Datensatz wird aus frei zugänglichen Quellen christlicher Chormusik (noty-bratstvo.org) zusammengestellt: Bajan-Arrangements zusammen mit den daraus automatisch extrahierten Melodielinien. Alle Daten werden im Format MusicXML vereinheitlicht.
+Parallel zur regelbasierten Engine wurde ein **Encoder-Decoder Music Transformer mit Relative Position Representation (RPR)** implementiert und trainiert (REMI-artige Tokenisierung mit eigenen Tokens `Voice_Melody` / `Voice_Bass` / `Voice_Chord`), 200 Epochen lang auf Google Colab (T4-GPU) trainiert, mit ~81 % Token-Genauigkeit und einem Validierungsverlust von ~1,39.
 
-| Teilmenge | Zielanzahl | Format |
-|-----------|--------------|--------|
-| train     | ~80% gesamt  | MusicXML |
-| val       | ~20% gesamt  | MusicXML |
-
-> **Hinweis:** Alle verwendeten Materialien sind frei zugänglich. Das Projekt verfolgt keine kommerziellen Zwecke.
+Dieses Modell wird **nicht produktiv eingesetzt**. Es ist als belegter Vergleichspunkt dokumentiert: Der Cross-Entropy-Verlust mittelt über die vielen gültigen Arrangements, die eine einzelne Melodie zulässt — strukturell eine schlechte Passung für dieses "eins-zu-viele"-Problem. Diese Erkenntnis begründete letztlich die Entscheidung für den deterministischen, regelbasierten Ansatz. Trainingscode und Checkpoints liegen außerhalb dieses Repositorys (Colab-Notebooks); hier enthalten sind nur die für beide Zweige gemeinsamen Datensatz-Vorbereitungsskripte.
 
 ---
 
-## Aktueller Status
+## 📊 Datensatz
 
-- [x] Projektarchitektur festgelegt
-- [ ] Datensatz gesammelt und vorbereitet *(in Bearbeitung)*
-- [ ] ML-Modell fine-tunen
-- [ ] Backend API (FastAPI)
-- [ ] Frontend (Next.js)
-- [ ] OpenSheetMusicDisplay Integration
-- [ ] Deployment auf Vercel + Railway
+Der Datensatz stammt aus öffentlich zugänglicher christlicher Chormusik (**noty-bratstvo.org**): Bajan-Arrangements zusammen mit automatisch extrahierten Melodiestimmen, aufgeteilt in musikalische Variationen und vereinheitlicht im MusicXML-Format.
+
+| Kennzahl | Wert |
+|--------|-------|
+| Ausgangslieder | 222 |
+| Melodie/Arrangement-Paare | 732 |
+| Trainings-Split | 618 |
+| Validierungs-Split | 114 |
+| Format | MusicXML |
+
+> **Hinweis:** Alle verwendeten Materialien sind öffentlich zugänglich. Das Projekt verfolgt keinen kommerziellen Zweck.
 
 ---
 
-## Mitwirken
+## 📈 Aktueller Status
+
+- [x] Regelbasierte Arrangement-Engine (Paket `hymnarranger`) — Parsing, Figuration, linke Hand Stradella
+- [x] Datensatz gesammelt und aufbereitet (732 Paare aus 222 Ausgangsliedern)
+- [x] Music Transformer als dokumentierte Forschungs-Baseline trainiert
+- [x] FastAPI-Backend für die regelbasierte Engine
+- [x] Frontend mit React + Vite (Upload, Editor im Browser, Noten + MIDI, Download)
+- [ ] API-Client des Frontends mit den Backend-Endpunkten abgleichen (`/analyze`, `/suite`, `/merge`)
+- [ ] Deployment (Docker-Konfiguration für Entwicklung vorhanden, Produktions-Deployment noch offen)
+- [ ] `LICENSE`-Datei passend zum obigen Badge ergänzen
+- [ ] Stilparameter für weitere Instrumente über Bajan hinaus (langfristig)
+
+---
+
+## 🤝 Mitwirken
 
 Beiträge sind willkommen! So kannst du mitmachen:
 
 1. Repository forken
-2. Feature-Branch erstellen (`git checkout -b feature/mein-feature`)
-3. Änderungen committen (`git commit -m 'Add mein-feature'`)
-4. Branch pushen (`git push origin feature/mein-feature`)
+2. Feature-Branch erstellen (`git checkout -b feature/my-feature`)
+3. Änderungen committen (`git commit -m 'Add my feature'`)
+4. Branch pushen (`git push origin feature/my-feature`)
 5. Pull Request öffnen
 
 ---
 
 ## 👤 Autor
 
-**Andrii** — Lehrer, Entwickler, Musiker
+**Andrii** — Bajan-Spieler, Arrangeur, Entwickler
 
-- Schwerpunkte: Full-Stack-Entwicklung, ML, Verarbeitung von Musikdaten
-- Tech-Stack: Python, TypeScript, Next.js, Node.js, AWS, Hugging Face
-
----
-
-## Lizenz
-
-Dieses Projekt steht unter der MIT-Lizenz. Details siehe [LICENSE](LICENSE).
+- Schwerpunkte: Verarbeitung symbolischer Musik, regelbasierte Generierung, Full-Stack-Entwicklung
+- Tech-Stack: Python, music21, TypeScript, React, PyTorch
 
 ---
 
-*Mit ❤️ für Musiker und Entwickler erstellt*
+## 📄 Lizenz
+
+Eine Veröffentlichung unter der MIT-Lizenz ist vorgesehen; die Datei `LICENSE` wurde dem Repository noch nicht hinzugefügt.
+
+---
+
+*Mit ❤️ für Musiker und Entwickler gemacht*

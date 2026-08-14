@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type Embed from 'flat-embed'
+import { Check } from 'lucide-react'
 import { FileDropzone } from './components/FileDropzone'
 import { AnalysisPanel } from './components/AnalysisPanel'
 import { GeneratePanel } from './components/GeneratePanel'
@@ -8,12 +10,16 @@ import { useAnalysis } from './hooks/useAnalysis'
 import { useArrangement, type Mode } from './hooks/useArrangement'
 import { MidiPlayer } from './components/MidiPlayer'
 import { DownloadBar } from './components/DownloadBar'
-import { ScoreEditor } from './components/ScoreEditor'
+import { FlatEmbedEditor } from './components/FlatEmbedEditor'
 import { SourcePicker, type SourceMode } from './components/SourcePicker'
+import { Spinner } from './components/ui/Spinner'
 
 export default function App() {
   const analysis = useAnalysis()
   const arrangement = useArrangement()
+
+  const flatEmbedRef = useRef<Embed | null>(null)
+  const [analyzeFromEditor, setAnalyzeFromEditor] = useState(false)
 
   const [fileSize, setFileSize] = useState<number | undefined>()
   const [mode, setMode] = useState<Mode>('suite')
@@ -50,7 +56,28 @@ export default function App() {
     analysis.reset()
   }
 
-  function handleGenerate() {
+  async function handleAnalyzeFromEditor() {
+    const embed = flatEmbedRef.current
+    if (!embed) return
+    setAnalyzeFromEditor(true)
+    try {
+      const xml = await embed.getMusicXML()
+      if (typeof xml === 'string') handleComposed(xml)
+    } finally {
+      setAnalyzeFromEditor(false)
+    }
+  }
+
+  async function handleGenerate() {
+    // У режимі compose — свіжо беремо XML з редактора перед кожним генеруванням,
+    // щоб правки після першого аналізу не губилися.
+    if (sourceMode === 'compose' && flatEmbedRef.current) {
+      const xml = await flatEmbedRef.current.getMusicXML()
+      if (typeof xml === 'string') {
+        arrangement.generate({ musicxml: xml }, mode, { preset, seed, varyBass })
+        return
+      }
+    }
     if (!analysis.source) return
     arrangement.generate(analysis.source, mode, { preset, seed, varyBass })
   }
@@ -82,7 +109,20 @@ export default function App() {
             loading={analysis.loading}
           />
         ) : (
-          <ScoreEditor onSubmit={handleComposed} busy={analysis.loading} />
+          <div className="space-y-3">
+            <FlatEmbedEditor
+              onReady={(embed) => { flatEmbedRef.current = embed }}
+            />
+            <button
+              type="button"
+              onClick={handleAnalyzeFromEditor}
+              disabled={analyzeFromEditor || analysis.loading}
+              className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+            >
+              {analyzeFromEditor || analysis.loading ? <Spinner /> : <Check className="h-4 w-4" />}
+              Взяти ноти з редактора
+            </button>
+          </div>
         )}
 
         {analysis.error && (

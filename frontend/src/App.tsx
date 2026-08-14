@@ -6,6 +6,10 @@ import { SheetViewer } from './components/SheetViewer'
 import { SectionList } from './components/SectionList'
 import { useAnalysis } from './hooks/useAnalysis'
 import { useArrangement, type Mode } from './hooks/useArrangement'
+import { MidiPlayer } from './components/MidiPlayer'
+import { DownloadBar } from './components/DownloadBar'
+import { ScoreEditor } from './components/ScoreEditor'
+import { SourcePicker, type SourceMode } from './components/SourcePicker'
 
 export default function App() {
   const analysis = useAnalysis()
@@ -16,6 +20,7 @@ export default function App() {
   const [preset, setPreset] = useState('')
   const [seed, setSeed] = useState<number | null>(null)
   const [varyBass, setVaryBass] = useState(true)
+  const [sourceMode, setSourceMode] = useState<SourceMode>('upload')
 
   // Набір пресетів залежить від розміру, тож після кожного аналізу
   // ставимо перший доступний — інакше в select лишиться id з попереднього файлу.
@@ -29,6 +34,14 @@ export default function App() {
     setFileSize(file.size)
     arrangement.clear()
     analysis.load(file, file.name)
+  }
+
+  // Ноти з редактора приходять рядком — бекенд приймає їх тим самим
+  // ендпоінтом, лише в JSON-тілі замість multipart.
+  function handleComposed(musicxml: string) {
+    setFileSize(undefined)
+    arrangement.clear()
+    analysis.load({ musicxml }, 'Мелодія з редактора')
   }
 
   function handleClear() {
@@ -52,13 +65,25 @@ export default function App() {
       </header>
 
       <div className="space-y-6">
-        <FileDropzone
-          onFile={handleFile}
-          onClear={handleClear}
-          fileName={analysis.fileName}
-          fileSize={fileSize}
-          loading={analysis.loading}
+        <SourcePicker
+          value={sourceMode}
+          onChange={(mode) => {
+            setSourceMode(mode)
+            handleClear()
+          }}
         />
+
+        {sourceMode === 'upload' ? (
+          <FileDropzone
+            onFile={handleFile}
+            onClear={handleClear}
+            fileName={analysis.fileName}
+            fileSize={fileSize}
+            loading={analysis.loading}
+          />
+        ) : (
+          <ScoreEditor onSubmit={handleComposed} busy={analysis.loading} />
+        )}
 
         {analysis.error && (
           <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-accent">
@@ -92,11 +117,31 @@ export default function App() {
           </div>
         )}
 
-        {arrangement.result && (
+       {arrangement.result && analysis.source && (
           <div className="space-y-4">
             <h2 className="font-display text-xl">{arrangement.result.title}</h2>
+
             <SectionList sections={arrangement.result.sections} />
+
+            <MidiPlayer
+              source={analysis.source}
+              params={
+                arrangement.result.mode === 'preset'
+                  ? { preset: arrangement.result.params.preset }
+                  : { seed: arrangement.result.params.seed ?? null }
+              }
+              resetKey={JSON.stringify(arrangement.result.params) + arrangement.result.mode}
+            />
+
             <SheetViewer musicxml={arrangement.result.musicxml} />
+
+            <DownloadBar
+              source={analysis.source}
+              mode={arrangement.result.mode}
+              params={arrangement.result.params}
+              musicxml={arrangement.result.musicxml}
+              fileName={analysis.fileName ?? 'гімн'}
+            />
           </div>
         )}
       </div>

@@ -4,12 +4,19 @@ import { api, ApiError } from '../api'
 import type { ScoreSource } from '../api'
 import { Spinner } from './ui/Spinner'
 
-// Побічний ефект: реєструє <midi-player> у CustomElementRegistry.
-import 'html-midi-player'
-
 // GM-банк від Magenta: єдиний публічний soundfont, у якому є
 // програма 21 (акордеон). Без нього плеєр озвучить усе фортепіано.
 const SOUNDFONT = 'https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus'
+
+// Реєструємо <midi-player> ледащо — тільки після кліку користувача,
+// щоб Tone.js не намагався відкрити AudioContext при завантаженні сторінки.
+let midiPlayerRegistered = false
+async function ensureMidiPlayer() {
+  if (!midiPlayerRegistered) {
+    await import('html-midi-player')
+    midiPlayerRegistered = true
+  }
+}
 
 interface Props {
   source: ScoreSource
@@ -46,6 +53,7 @@ export function MidiPlayer({ source, params, resetKey }: Props) {
     setError(null)
 
     try {
+      await ensureMidiPlayer()
       const blob = await api.midi(source, params)
       dispose()
 

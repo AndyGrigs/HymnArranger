@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import random
 from dataclasses import replace
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from music21 import stream
 
+from .model import ArrangeConfig
 from .parsing import parse_input
-from .assembly import arrange, arrange_multi
+from .assembly import arrange_multi
 from . import meters
 
 
@@ -25,6 +26,44 @@ def resolve_suite(ts, plan=None, seed: Optional[int] = None) -> List[str]:
     out = []
     for step in (plan or meters.suite_plan(ts)):
         out.append(rng.choice(step) if isinstance(step, (list, tuple)) else step)
+    return out
+
+
+def plan_suite(ts, plan=None, seed: Optional[int] = None,
+               vary_bass: bool = True) -> List[Tuple[str, ArrangeConfig]]:
+    """
+    Повертає список (ім'я пресету, готовий cfg) — рівно те, що піде в партитуру.
+
+    Винесено окремо, щоб API міг показати склад сюїти й згенерувати ноти
+    з ОДНОГО розрахунку. Інакше при seed=None це були б два незалежні
+    випадкові кидки, і підписи розділів не збігалися б із музикою.
+    """
+    presets = meters.presets(ts)
+    pool = meters.lh_pool(ts)
+    names = resolve_suite(ts, plan, seed)
+    rng = random.Random(None if seed is None else seed + 1000)
+
+    # Тасована колода замість незалежних кидків: інакше один патерн
+    # випадає тричі поспіль, а інший жодного разу.
+    deck: List[str] = []
+    prev: Optional[str] = None
+
+    def next_pattern() -> str:
+        nonlocal deck, prev
+        if not deck:
+            deck = list(pool)
+            rng.shuffle(deck)
+            if prev is not None and deck[0] == prev and len(deck) > 1:
+                deck[0], deck[1] = deck[1], deck[0]
+        prev = deck.pop(0)
+        return prev
+
+    out: List[Tuple[str, ArrangeConfig]] = []
+    for n in names:
+        cfg = presets[n]
+        if vary_bass and cfg.mode not in _MELODY_IN_BASS:
+            cfg = replace(cfg, lh_pattern=next_pattern())
+        out.append((n, cfg))
     return out
 
 
@@ -44,37 +83,10 @@ def arrange_suite(source, plan=None, seed: Optional[int] = None,
     kind = 'тридольний' if meters.is_compound(ts) else 'дводольний'
     print(f'  Розмір {ts.ratioString} -> {kind} план')
 
-    presets = meters.presets(ts)
-    pool = meters.lh_pool(ts)
-    names = resolve_suite(ts, plan, seed)
-    rng = random.Random(None if seed is None else seed + 1000)
-
-    # Тасована колода замість незалежних кидків: інакше один патерн
-    # випадає тричі поспіль, а інший жодного разу.
-    deck, prev = [], None
-
-    def next_pattern():
-        nonlocal deck, prev
-        if not deck:
-            deck = list(pool)
-            rng.shuffle(deck)
-            if prev is not None and deck[0] == prev and len(deck) > 1:
-                deck[0], deck[1] = deck[1], deck[0]
-        prev = deck.pop(0)
-        return prev
-
-    cfgs, log = [], []
-    for n in names:
-        cfg = presets[n]
-        if vary_bass and cfg.mode not in _MELODY_IN_BASS:
-            pat = next_pattern()
-            cfg = replace(cfg, lh_pattern=pat)
-            log.append(f'{cfg.name} [бас: {pat}]')
-        else:
-            log.append(cfg.name)
-        cfgs.append(cfg)
+    steps = plan_suite(ts, plan, seed, vary_bass)
 
     print('  Сюїта:')
-    for i, item in enumerate(log, 1):
-        print(f'    {i}. {item}')
-    return arrange_multi(source, cfgs=cfgs)
+    for i, (_, cfg) in enumerate(steps, 1):
+        print(f'    {i}. {cfg.name} [бас: {cfg.lh_pattern}]')
+
+    return arrange_multi(source, cfgs=[cfg for _, cfg in steps])

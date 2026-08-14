@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
-from fastapi import Body, FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -14,27 +15,59 @@ from pydantic import BaseModel
 from .assembly import arrange, arrange_multi, save, to_musicxml_string
 from .meters import presets, is_compound
 from .parsing import parse_input
-from .suite import arrange_suite, resolve_suite
+from .suite import plan_suite
 
 
 class ScoreIn(BaseModel):
+    """Лишено для документації: тіло запиту у JSON-режимі."""
     musicxml: str
 
 
-async def _read_source(
-    file: Optional[UploadFile],
-    body: Optional[ScoreIn],
-) -> Path:
-    if file is not None:
-        suffix = Path(file.filename).suffix or '.mxl'
+async def _read_source(request: Request) -> Tuple[Path, Optional[str]]:
+    """
+    Приймає ноти двома способами й повертає (шлях до тимчасового файлу, ім'я файлу).
+
+    ВАЖЛИВО: розбір іде вручну через Request, а не через File(...)/Body(...)
+    у сигнатурі. Якщо в одному ендпоінті оголосити і File, і Body-модель,
+    FastAPI вважає весь запит multipart/form-data — і будь-який
+    application/json тоді валиться в 422, бо Body ніколи не заповниться.
+    Саме через це раніше не працював вбудований нотний редактор.
+    """
+    ctype = (request.headers.get('content-type') or '').lower()
+
+    # --- JSON: {"musicxml": "<score-partwise ...>"} ---
+    if ctype.startswith('application/json'):
+        try:
+            payload = await request.json()
+        except (json.JSONDecodeError, ValueError) as exc:
+            raise HTTPException(422, f'Тіло запиту не є коректним JSON: {exc}') from exc
+        if not isinstance(payload, dict):
+            raise HTTPException(422, 'Очікується JSON-обʼєкт із полем "musicxml".')
+        xml = payload.get('musicxml')
+        if not isinstance(xml, str) or not xml.strip():
+            raise HTTPException(422, 'Поле "musicxml" відсутнє або порожнє.')
+        with tempfile.NamedTemporaryFile(suffix='.xml', delete=False,
+                                         mode='w', encoding='utf-8') as tmp:
+            tmp.write(xml)
+            return Path(tmp.name), None
+
+    # --- multipart/form-data з полем "file" ---
+    if ctype.startswith('multipart/form-data'):
+        form = await request.form()
+        upload = form.get('file')
+        if upload is None or not hasattr(upload, 'read'):
+            raise HTTPException(422, 'У формі немає файлу в полі "file".')
+        filename = getattr(upload, 'filename', None) or 'melody.mxl'
+        suffix = Path(filename).suffix or '.mxl'
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            tmp.write(await file.read())
-            return Path(tmp.name)
-    if body is not None:
-        with tempfile.NamedTemporaryFile(suffix='.xml', delete=False, mode='w', encoding='utf-8') as tmp:
-            tmp.write(body.musicxml)
-            return Path(tmp.name)
-    raise HTTPException(422, 'Provide either a file upload or a JSON body with "musicxml" field.')
+            tmp.write(await upload.read())
+            return Path(tmp.name), filename
+
+    raise HTTPException(
+        422,
+        'Надішли або multipart-файл у полі "file", '
+        'або JSON-тіло з полем "musicxml".',
+    )
 
 
 app = FastAPI(title='HymnArranger API')
@@ -53,16 +86,12 @@ def health():
 
 
 @app.post('/analyze')
-async def analyze(
-    file: Optional[UploadFile] = File(None),
-    body: Optional[ScoreIn] = Body(None),
-    seed: Optional[int] = Query(None),
-):
-    path = await _read_source(file, body)
+async def analyze(request: Request, seed: Optional[int] = Query(None)):
+    path, _ = await _read_source(request)
     try:
         ctx = parse_input(str(path))
         ps = presets(ctx.ts)
-        suite_names = resolve_suite(ctx.ts, seed=seed)
+        steps = plan_suite(ctx.ts, seed=seed)
         measures = round(ctx.total_ql / ctx.ts.barDuration.quarterLength)
         return {
             'meter': ctx.ts.ratioString,
@@ -83,11 +112,11 @@ async def analyze(
                 {
                     'index': i + 1,
                     'preset': n,
-                    'name': ps[n].name,
-                    'tempo': ps[n].tempo or 84,
-                    'bass': ps[n].lh_pattern,
+                    'name': cfg.name,
+                    'tempo': cfg.tempo or 84,
+                    'bass': cfg.lh_pattern,
                 }
-                for i, n in enumerate(suite_names)
+                for i, (n, cfg) in enumerate(steps)
             ],
         }
     except HTTPException:
@@ -100,13 +129,12 @@ async def analyze(
 
 @app.post('/arrange')
 async def arrange_endpoint(
-    file: Optional[UploadFile] = File(None),
-    body: Optional[ScoreIn] = Body(None),
+    request: Request,
     preset: Optional[str] = Query(None),
     download: bool = Query(False),
 ):
-    path = await _read_source(file, body)
-    stem = Path(file.filename).stem if file else 'arranged'
+    path, filename = await _read_source(request)
+    stem = Path(filename).stem if filename else 'arranged'
     try:
         ctx = parse_input(str(path))
         ps = presets(ctx.ts)
@@ -141,19 +169,21 @@ async def arrange_endpoint(
 
 @app.post('/suite')
 async def suite_endpoint(
-    file: Optional[UploadFile] = File(None),
-    body: Optional[ScoreIn] = Body(None),
+    request: Request,
     seed: Optional[int] = Query(None),
     vary_bass: bool = Query(True),
     download: bool = Query(False),
 ):
-    path = await _read_source(file, body)
-    stem = Path(file.filename).stem if file else 'suite'
+    path, filename = await _read_source(request)
+    stem = Path(filename).stem if filename else 'suite'
     try:
         ctx = parse_input(str(path))
-        ps = presets(ctx.ts)
-        suite_names = resolve_suite(ctx.ts, seed=seed)
-        score = arrange_suite(str(path), seed=seed, vary_bass=vary_bass)
+
+        # Один розрахунок плану — і підписи розділів, і сама музика.
+        # Раніше це були два незалежні виклики, тож при seed=None
+        # список у відповіді не збігався з нотами.
+        steps = plan_suite(ctx.ts, seed=seed, vary_bass=vary_bass)
+        score = arrange_multi(str(path), cfgs=[cfg for _, cfg in steps])
 
         if download:
             out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
@@ -172,11 +202,11 @@ async def suite_endpoint(
                 {
                     'index': i + 1,
                     'preset': n,
-                    'name': ps[n].name,
-                    'tempo': ps[n].tempo or 84,
-                    'bass': ps[n].lh_pattern,
+                    'name': cfg.name,
+                    'tempo': cfg.tempo or 84,
+                    'bass': cfg.lh_pattern,
                 }
-                for i, n in enumerate(suite_names)
+                for i, (n, cfg) in enumerate(steps)
             ],
         }
     except HTTPException:
@@ -188,18 +218,13 @@ async def suite_endpoint(
 
 
 @app.post('/merge')
-async def merge_endpoint(
-    file: Optional[UploadFile] = File(None),
-    body: Optional[ScoreIn] = Body(None),
-    download: bool = Query(False),
-):
-    path = await _read_source(file, body)
-    stem = Path(file.filename).stem if file else 'merge'
+async def merge_endpoint(request: Request, download: bool = Query(False)):
+    path, filename = await _read_source(request)
+    stem = Path(filename).stem if filename else 'merge'
     try:
         ctx = parse_input(str(path))
         ps = presets(ctx.ts)
-        preset_names = list(ps)
-        score = arrange_multi(str(path), presets=preset_names, preset_map=ps)
+        score = arrange_multi(str(path), presets=list(ps), preset_map=ps)
 
         if download:
             out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
@@ -224,8 +249,7 @@ async def merge_endpoint(
 
 @app.post('/midi')
 async def midi(
-    file: Optional[UploadFile] = File(None),
-    body: Optional[ScoreIn] = Body(None),
+    request: Request,
     seed: Optional[int] = Query(None),
     preset: Optional[str] = Query(None),
 ):
@@ -236,7 +260,8 @@ async def midi(
     program change 21 (GM Accordion), тож будь-який програвач із
     GM-банком дасть саме баян.
     """
-    path = await _read_source(file, body)
+    path, filename = await _read_source(request)
+    stem = Path(filename).stem if filename else 'arranged'
 
     out = tempfile.NamedTemporaryFile(suffix='.mid', delete=False)
     out.close()
@@ -252,7 +277,6 @@ async def midi(
 
         score.write('midi', fp=str(out_path))
 
-        stem = Path(file.filename).stem if file else 'arranged'
         return FileResponse(str(out_path), media_type='audio/midi',
                             filename=stem + '.mid')
     except HTTPException:

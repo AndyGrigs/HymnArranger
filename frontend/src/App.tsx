@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type Embed from 'flat-embed'
 import { Check } from 'lucide-react'
 import { FileDropzone } from './components/FileDropzone'
@@ -13,6 +13,7 @@ import { DownloadBar } from './components/DownloadBar'
 import { FlatEmbedEditor } from './components/FlatEmbedEditor'
 import { SourcePicker, type SourceMode } from './components/SourcePicker'
 import { Spinner } from './components/ui/Spinner'
+import { blankMusicXML, KEY_OPTIONS, METER_OPTIONS } from './lib/blankScore'
 
 export default function App() {
   const analysis = useAnalysis()
@@ -27,6 +28,14 @@ export default function App() {
   const [seed, setSeed] = useState<number | null>(null)
   const [varyBass, setVaryBass] = useState(true)
   const [sourceMode, setSourceMode] = useState<SourceMode>('upload')
+
+  // Налаштування заготовки для вбудованого редактора
+  const [editorMeter, setEditorMeter] = useState('4/4')
+  const [editorFifths, setEditorFifths] = useState(0)
+  const blankXml = useMemo(
+    () => blankMusicXML({ meter: editorMeter, fifths: editorFifths, measures: 16 }),
+    [editorMeter, editorFifths],
+  )
 
   // Набір пресетів залежить від розміру, тож після кожного аналізу
   // ставимо перший доступний — інакше в select лишиться id з попереднього файлу.
@@ -110,7 +119,34 @@ export default function App() {
           />
         ) : (
           <div className="space-y-3">
+            <div className="flex flex-wrap gap-3 rounded-lg border border-ink/10 bg-white px-4 py-3">
+              <label className="flex items-center gap-2 text-sm">
+                <span className="text-muted">Розмір</span>
+                <select
+                  value={editorMeter}
+                  onChange={(e) => setEditorMeter(e.target.value)}
+                  className="rounded border border-ink/15 bg-white px-2 py-1 text-sm"
+                >
+                  {METER_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <span className="text-muted">Тональність</span>
+                <select
+                  value={editorFifths}
+                  onChange={(e) => setEditorFifths(Number(e.target.value))}
+                  className="rounded border border-ink/15 bg-white px-2 py-1 text-sm"
+                >
+                  {KEY_OPTIONS.map((k) => (
+                    <option key={k.fifths} value={k.fifths}>{k.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
             <FlatEmbedEditor
+              key={`${editorMeter}-${editorFifths}`}
+              musicXml={blankXml}
               onReady={(embed) => { flatEmbedRef.current = embed }}
             />
             <button

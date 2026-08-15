@@ -1,94 +1,99 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type Embed from 'flat-embed'
-import { Check } from 'lucide-react'
-import { FileDropzone } from './components/FileDropzone'
-import { AnalysisPanel } from './components/AnalysisPanel'
-import { GeneratePanel } from './components/GeneratePanel'
-import { SheetViewer } from './components/SheetViewer'
-import { SectionList } from './components/SectionList'
-import { useAnalysis } from './hooks/useAnalysis'
-import { useArrangement, type Mode } from './hooks/useArrangement'
-import { MidiPlayer } from './components/MidiPlayer'
-import { DownloadBar } from './components/DownloadBar'
-import { FlatEmbedEditor } from './components/FlatEmbedEditor'
-import { SourcePicker, type SourceMode } from './components/SourcePicker'
-import { Spinner } from './components/ui/Spinner'
-import { blankMusicXML, KEY_OPTIONS, METER_OPTIONS } from './lib/blankScore'
+import { useEffect, useMemo, useRef, useState } from "react";
+import type Embed from "flat-embed";
+import { Check } from "lucide-react";
+import { FileDropzone } from "./components/FileDropzone";
+import { AnalysisPanel } from "./components/AnalysisPanel";
+import { GeneratePanel } from "./components/GeneratePanel";
+import { SheetViewer } from "./components/SheetViewer";
+import { SectionList } from "./components/SectionList";
+import { useAnalysis } from "./hooks/useAnalysis";
+import { useArrangement, type Mode } from "./hooks/useArrangement";
+import { MidiPlayer } from "./components/MidiPlayer";
+import { DownloadBar } from "./components/DownloadBar";
+import { FlatEmbedEditor } from "./components/FlatEmbedEditor";
+import { SourcePicker, type SourceMode } from "./components/SourcePicker";
+import { Spinner } from "./components/ui/Spinner";
+import { blankMusicXML, KEY_OPTIONS, METER_OPTIONS } from "./lib/blankScore";
 
 export default function App() {
-  const analysis = useAnalysis()
-  const arrangement = useArrangement()
+  const analysis = useAnalysis();
+  const arrangement = useArrangement();
 
-  const flatEmbedRef = useRef<Embed | null>(null)
-  const [analyzeFromEditor, setAnalyzeFromEditor] = useState(false)
+  const flatEmbedRef = useRef<Embed | null>(null);
+  const [analyzeFromEditor, setAnalyzeFromEditor] = useState(false);
 
-  const [fileSize, setFileSize] = useState<number | undefined>()
-  const [mode, setMode] = useState<Mode>('suite')
-  const [preset, setPreset] = useState('')
-  const [seed, setSeed] = useState<number | null>(null)
-  const [varyBass, setVaryBass] = useState(true)
-  const [sourceMode, setSourceMode] = useState<SourceMode>('upload')
+  const [fileSize, setFileSize] = useState<number | undefined>();
+  const [mode, setMode] = useState<Mode>("suite");
+  const [preset, setPreset] = useState("");
+  const [seed, setSeed] = useState<number | null>(null);
+  const [varyBass, setVaryBass] = useState(true);
+  const [sourceMode, setSourceMode] = useState<SourceMode>("upload");
 
   // Налаштування заготовки для вбудованого редактора
-  const [editorMeter, setEditorMeter] = useState('4/4')
-  const [editorFifths, setEditorFifths] = useState(0)
+  const [editorMeter, setEditorMeter] = useState("4/4");
+  const [editorFifths, setEditorFifths] = useState(0);
   const blankXml = useMemo(
-    () => blankMusicXML({ meter: editorMeter, fifths: editorFifths, measures: 16 }),
+    () =>
+      blankMusicXML({ meter: editorMeter, fifths: editorFifths, measures: 16 }),
     [editorMeter, editorFifths],
-  )
+  );
 
   // Набір пресетів залежить від розміру, тож після кожного аналізу
   // ставимо перший доступний — інакше в select лишиться id з попереднього файлу.
   useEffect(() => {
     if (analysis.analysis?.presets.length) {
-      setPreset(analysis.analysis.presets[0].id)
+      setPreset(analysis.analysis.presets[0].id);
     }
-  }, [analysis.analysis])
+  }, [analysis.analysis]);
 
   function handleFile(file: File) {
-    setFileSize(file.size)
-    arrangement.clear()
-    analysis.load(file, file.name)
+    setFileSize(file.size);
+    arrangement.clear();
+    analysis.load(file, file.name);
   }
 
   // Ноти з редактора приходять рядком — бекенд приймає їх тим самим
   // ендпоінтом, лише в JSON-тілі замість multipart.
   function handleComposed(musicxml: string) {
-    setFileSize(undefined)
-    arrangement.clear()
-    analysis.load({ musicxml }, 'Мелодія з редактора')
+    setFileSize(undefined);
+    arrangement.clear();
+    analysis.load({ musicxml }, "Мелодія з редактора");
   }
 
   function handleClear() {
-    setFileSize(undefined)
-    arrangement.clear()
-    analysis.reset()
+    setFileSize(undefined);
+    arrangement.clear();
+    analysis.reset();
   }
 
   async function handleAnalyzeFromEditor() {
-    const embed = flatEmbedRef.current
-    if (!embed) return
-    setAnalyzeFromEditor(true)
+    const embed = flatEmbedRef.current;
+    if (!embed) return;
+    setAnalyzeFromEditor(true);
     try {
-      const xml = await embed.getMusicXML()
-      if (typeof xml === 'string') handleComposed(xml)
+      const xml = await embed.getMusicXML();
+      if (typeof xml === "string") handleComposed(xml);
     } finally {
-      setAnalyzeFromEditor(false)
+      setAnalyzeFromEditor(false);
     }
   }
 
   async function handleGenerate() {
     // У режимі compose — свіжо беремо XML з редактора перед кожним генеруванням,
     // щоб правки після першого аналізу не губилися.
-    if (sourceMode === 'compose' && flatEmbedRef.current) {
-      const xml = await flatEmbedRef.current.getMusicXML()
-      if (typeof xml === 'string') {
-        arrangement.generate({ musicxml: xml }, mode, { preset, seed, varyBass })
-        return
+    if (sourceMode === "compose" && flatEmbedRef.current) {
+      const xml = await flatEmbedRef.current.getMusicXML();
+      if (typeof xml === "string") {
+        arrangement.generate({ musicxml: xml }, mode, {
+          preset,
+          seed,
+          varyBass,
+        });
+        return;
       }
     }
-    if (!analysis.source) return
-    arrangement.generate(analysis.source, mode, { preset, seed, varyBass })
+    if (!analysis.source) return;
+    arrangement.generate(analysis.source, mode, { preset, seed, varyBass });
   }
 
   return (
@@ -104,12 +109,12 @@ export default function App() {
         <SourcePicker
           value={sourceMode}
           onChange={(mode) => {
-            setSourceMode(mode)
-            handleClear()
+            setSourceMode(mode);
+            handleClear();
           }}
         />
 
-        {sourceMode === 'upload' ? (
+        {sourceMode === "upload" ? (
           <FileDropzone
             onFile={handleFile}
             onClear={handleClear}
@@ -127,7 +132,11 @@ export default function App() {
                   onChange={(e) => setEditorMeter(e.target.value)}
                   className="rounded border border-ink/15 bg-white px-2 py-1 text-sm"
                 >
-                  {METER_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+                  {METER_OPTIONS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="flex items-center gap-2 text-sm">
@@ -138,7 +147,9 @@ export default function App() {
                   className="rounded border border-ink/15 bg-white px-2 py-1 text-sm"
                 >
                   {KEY_OPTIONS.map((k) => (
-                    <option key={k.fifths} value={k.fifths}>{k.label}</option>
+                    <option key={k.fifths} value={k.fifths}>
+                      {k.label}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -147,7 +158,9 @@ export default function App() {
             <FlatEmbedEditor
               key={`${editorMeter}-${editorFifths}`}
               musicXml={blankXml}
-              onReady={(embed) => { flatEmbedRef.current = embed }}
+              onEmbedChange={(embed) => {
+                flatEmbedRef.current = embed;
+              }}
             />
             <button
               type="button"
@@ -155,7 +168,11 @@ export default function App() {
               disabled={analyzeFromEditor || analysis.loading}
               className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
             >
-              {analyzeFromEditor || analysis.loading ? <Spinner /> : <Check className="h-4 w-4" />}
+              {analyzeFromEditor || analysis.loading ? (
+                <Spinner />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
               Взяти ноти з редактора
             </button>
           </div>
@@ -193,7 +210,7 @@ export default function App() {
           </div>
         )}
 
-       {arrangement.result && analysis.source && (
+        {arrangement.result && analysis.source && (
           <div className="space-y-4">
             <h2 className="font-display text-xl">{arrangement.result.title}</h2>
 
@@ -202,11 +219,14 @@ export default function App() {
             <MidiPlayer
               source={analysis.source}
               params={
-                arrangement.result.mode === 'preset'
+                arrangement.result.mode === "preset"
                   ? { preset: arrangement.result.params.preset }
                   : { seed: arrangement.result.params.seed ?? null }
               }
-              resetKey={JSON.stringify(arrangement.result.params) + arrangement.result.mode}
+              resetKey={
+                JSON.stringify(arrangement.result.params) +
+                arrangement.result.mode
+              }
             />
 
             <SheetViewer musicxml={arrangement.result.musicxml} />
@@ -216,11 +236,11 @@ export default function App() {
               mode={arrangement.result.mode}
               params={arrangement.result.params}
               musicxml={arrangement.result.musicxml}
-              fileName={analysis.fileName ?? 'гімн'}
+              fileName={analysis.fileName ?? "гімн"}
             />
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

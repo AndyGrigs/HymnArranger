@@ -19,13 +19,13 @@ async function ensureMidiPlayer() {
 }
 
 interface Props {
+  /** Вже аранжована партитура MusicXML — саме вона буде конвертована в MIDI. */
   source: ScoreSource
-  params: Record<string, unknown>
   /** Змінюється при кожній новій генерації — скидає завантажений звук. */
   resetKey: string
 }
 
-export function MidiPlayer({ source, params, resetKey }: Props) {
+export function MidiPlayer({ source, resetKey }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const urlRef = useRef<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -54,7 +54,7 @@ export function MidiPlayer({ source, params, resetKey }: Props) {
 
     try {
       await ensureMidiPlayer()
-      const blob = await api.midi(source, params)
+      const blob = await api.midi(source)
       dispose()
 
       const url = URL.createObjectURL(blob)

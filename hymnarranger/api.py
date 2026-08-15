@@ -248,18 +248,16 @@ async def merge_endpoint(request: Request, download: bool = Query(False)):
 
 
 @app.post('/midi')
-async def midi(
-    request: Request,
-    seed: Optional[int] = Query(None),
-    preset: Optional[str] = Query(None),
-):
+async def midi(request: Request):
     """
-    Та сама музика у форматі MIDI.
+    Конвертує вже готову (аранжовану) партитуру MusicXML у MIDI.
 
-    Потрібен для надійного відтворення в браузері: MIDI несе
-    program change 21 (GM Accordion), тож будь-який програвач із
-    GM-банком дасть саме баян.
+    Фронтенд передає сюди musicxml результату /suite або /arrange —
+    не оригінальну мелодію. Так MIDI завжди збігається з нотами на екрані
+    і не залежить від повторного генерування.
     """
+    from music21 import converter as m21conv
+
     path, filename = await _read_source(request)
     stem = Path(filename).stem if filename else 'arranged'
 
@@ -268,15 +266,8 @@ async def midi(
     out_path = Path(out.name)
 
     try:
-        ctx = parse_input(str(path))
-        ps = presets(ctx.ts)
-        name = preset or next(iter(ps))
-        if name not in ps:
-            raise HTTPException(400, f'Unknown preset {name!r}. Available: {", ".join(ps)}')
-        score = arrange(str(path), ps[name])
-
+        score = m21conv.parse(str(path))
         score.write('midi', fp=str(out_path))
-
         return FileResponse(str(out_path), media_type='audio/midi',
                             filename=stem + '.mid')
     except HTTPException:

@@ -50,7 +50,7 @@ export function DownloadBar({ source, mode, params, musicxml, fileName }: Props)
     setBusy('midi')
     setError(null)
     try {
-      const blob = await api.midi(source, params)
+      const blob = await api.midi({ musicxml: musicxml })
       saveBlob(blob, safeName(fileName, SUFFIX[mode], 'mid'))
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Завантаження не вдалося.')

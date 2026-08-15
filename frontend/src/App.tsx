@@ -217,12 +217,7 @@ export default function App() {
             <SectionList sections={arrangement.result.sections} />
 
             <MidiPlayer
-              source={analysis.source}
-              params={
-                arrangement.result.mode === "preset"
-                  ? { preset: arrangement.result.params.preset }
-                  : { seed: arrangement.result.params.seed ?? null }
-              }
+              source={{ musicxml: arrangement.result.musicxml }}
               resetKey={
                 JSON.stringify(arrangement.result.params) +
                 arrangement.result.mode

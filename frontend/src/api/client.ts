@@ -111,13 +111,9 @@ export const api = {
     return postJson<MergeOut>('/merge', source, undefined, signal)
   },
 
-  /** MIDI того самого матеріалу: у ньому program change 21 (GM Accordion). */
-  midi(
-    source: ScoreSource,
-    opts: { preset?: string; seed?: number | null } = {},
-    signal?: AbortSignal,
-  ) {
-    return postBlob('/midi', source, opts, signal)
+  /** Конвертує передану партитуру MusicXML у MIDI без повторного аранжування. */
+  midi(source: ScoreSource, signal?: AbortSignal) {
+    return postBlob('/midi', source, {}, signal)
   },
 
   /** Готовий .mxl на завантаження. */

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type Embed from 'flat-embed'
 import {
   Music, Music2, Download, Edit3, Loader2,
-  Play, Link, Check,
+  Play, Link, Check, RefreshCw,
 } from 'lucide-react'
 import { FileDropzone } from './components/FileDropzone'
 import { AnalysisPanel } from './components/AnalysisPanel'
@@ -59,6 +59,8 @@ export default function App() {
   const [fileSize,       setFileSize]       = useState<number | undefined>()
   const [urlInput,       setUrlInput]       = useState('')
   const [composeLoading, setComposeLoading] = useState(false)
+  const [applyingEdits,  setApplyingEdits]  = useState(false)
+  const [editsApplied,   setEditsApplied]   = useState(false)
 
   // Settings (meter/key sync with analysis result when available)
   const [editorMeter,  setEditorMeter]  = useState('4/4')
@@ -116,12 +118,14 @@ export default function App() {
 
   function handleFile(file: File) {
     setFileSize(file.size)
+    setEditsApplied(false)
     arrangement.clear()
     analysis.load(file, file.name)
   }
 
   function handleClear() {
     setFileSize(undefined)
+    setEditsApplied(false)
     arrangement.clear()
     analysis.reset()
   }
@@ -141,8 +145,24 @@ export default function App() {
     }
   }
 
+  async function handleApplyEditorChanges() {
+    const embed = flatEmbedRef.current
+    if (!embed) return
+    setApplyingEdits(true)
+    try {
+      const xml = await embed.getMusicXML()
+      if (typeof xml === 'string') {
+        arrangement.updateMusicXml(xml)
+        setEditsApplied(true)
+      }
+    } finally {
+      setApplyingEdits(false)
+    }
+  }
+
   async function handleGenerate() {
     if (!analysis.source) return
+    setEditsApplied(false)
     arrangement.generate(analysis.source, mode, { preset, seed, varyBass })
   }
 
@@ -413,15 +433,6 @@ export default function App() {
                         <div className="flex items-center gap-1.5 text-sm">
                           <span className="text-muted">BPM</span>
                           <span className="font-medium">{displayTempo}</span>
-                          <button type="button" className="text-muted/40 transition hover:text-muted">—</button>
-                          <button type="button" className="text-muted/40 transition hover:text-muted">+</button>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <span className="text-muted">Транспонувати</span>
-                          <span className="font-medium">0</span>
-                          <button type="button" className="text-muted/40 transition hover:text-muted">—</button>
-                          <button type="button" className="text-muted/40 transition hover:text-muted">+</button>
                         </div>
                       </div>
                     </div>
@@ -435,9 +446,31 @@ export default function App() {
                 {/* ─ Редактор ─ */}
                 {activeTab === 'editor' && (
                   <div className="flex-1 p-5">
-                    <p className="mb-3 text-sm text-muted">
-                      Редагуй аранжування прямо тут. Зміни враховуються при експорті.
-                    </p>
+                    <div className="mb-3 flex flex-wrap items-center gap-3">
+                      <p className="text-sm text-muted">
+                        Редагуй аранжування прямо тут, тоді натисни «Застосувати зміни» —
+                        інакше партитура, MIDI й завантаження й далі використовуватимуть старий варіант.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleApplyEditorChanges}
+                        disabled={applyingEdits}
+                        className="ml-auto flex shrink-0 items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                      >
+                        {applyingEdits
+                          ? <Spinner />
+                          : editsApplied
+                            ? <Check className="h-4 w-4" />
+                            : <RefreshCw className="h-4 w-4" />
+                        }
+                        {applyingEdits
+                          ? 'Застосовую…'
+                          : editsApplied
+                            ? 'Застосовано'
+                            : 'Застосувати зміни'
+                        }
+                      </button>
+                    </div>
                     <FlatEmbedEditor
                       musicXml={arrangement.result.musicxml}
                       onEmbedChange={(embed) => { flatEmbedRef.current = embed }}

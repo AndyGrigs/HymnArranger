@@ -103,7 +103,12 @@ export function useArrangement() {
     setLoading(false)
   }, [])
 
+  /** Підмінює musicxml у поточному результаті — напр. після ручного редагування. */
+  const updateMusicXml = useCallback((musicxml: string) => {
+    setResult((prev) => (prev ? { ...prev, musicxml } : prev))
+  }, [])
+
   useEffect(() => () => abortRef.current?.abort(), [])
 
-  return { result, loading, error, generate, clear }
+  return { result, loading, error, generate, clear, updateMusicXml }
 }

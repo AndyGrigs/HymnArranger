@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type Embed from 'flat-embed'
 import {
   Music, Music2, Download, Edit3, Loader2,
-  Play, Link, Check, RefreshCw,
+  Play, Check, RefreshCw,
 } from 'lucide-react'
 import { FileDropzone } from './components/FileDropzone'
 import { AnalysisPanel } from './components/AnalysisPanel'
@@ -28,13 +28,12 @@ async function ensureMidiPlayer() {
   }
 }
 
-type InputMode = 'upload' | 'compose' | 'url'
+type InputMode = 'upload' | 'compose'
 type ResultTab = 'score' | 'editor' | 'chords' | 'export'
 
 const INPUT_TABS: { id: InputMode; label: string }[] = [
-  { id: 'upload',  label: 'Завантажити файл'  },
-  { id: 'compose', label: 'Написати мелодію'  },
-  { id: 'url',     label: 'Вставити посилання' },
+  { id: 'upload',  label: 'Завантажити файл' },
+  { id: 'compose', label: 'Написати мелодію' },
 ]
 
 const SIDEBAR_TABS: { id: ResultTab; Icon: React.FC<{ className?: string }>; label: string }[] = [
@@ -57,7 +56,6 @@ export default function App() {
   const [inputMode,      setInputMode]      = useState<InputMode>('upload')
   const [activeTab,      setActiveTab]      = useState<ResultTab>('score')
   const [fileSize,       setFileSize]       = useState<number | undefined>()
-  const [urlInput,       setUrlInput]       = useState('')
   const [composeLoading, setComposeLoading] = useState(false)
   const [applyingEdits,  setApplyingEdits]  = useState(false)
   const [editsApplied,   setEditsApplied]   = useState(false)
@@ -271,32 +269,6 @@ export default function App() {
                       : 'Взяти ноти з редактора'
                     }
                   </button>
-                </div>
-              )}
-
-              {/* URL input */}
-              {inputMode === 'url' && (
-                <div className="space-y-3">
-                  <p className="text-xs text-muted">
-                    YouTube, SoundCloud або інше посилання на мелодію
-                  </p>
-                  <div className="relative">
-                    <input
-                      type="url"
-                      value={urlInput}
-                      onChange={(e) => setUrlInput(e.target.value)}
-                      placeholder="Вставте посилання"
-                      className="w-full rounded-lg border border-ink/15 bg-white px-4 py-2.5 pr-10 text-sm outline-none transition focus:border-accent/50 focus:ring-1 focus:ring-accent/20"
-                    />
-                    <Link className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-                  </div>
-                  <button
-                    disabled
-                    className="w-full cursor-not-allowed rounded-lg border border-ink/10 bg-ink/5 py-2.5 text-sm text-muted/50"
-                  >
-                    Завантажити
-                  </button>
-                  <p className="text-center text-xs text-muted/40">Незабаром доступно</p>
                 </div>
               )}
             </div>

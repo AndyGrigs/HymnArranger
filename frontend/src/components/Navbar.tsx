@@ -1,11 +1,14 @@
-import { Moon, User } from 'lucide-react'
+import { useState } from 'react'
+import { Moon, Menu, X, User } from 'lucide-react'
 
 const NAV_LINKS = ['Головна', 'Як це працює', 'Приклади', 'Підтримка']
 
 export function Navbar() {
+  const [open, setOpen] = useState(false)
+
   return (
     <nav className="sticky top-0 z-50 border-b border-ink/10 bg-paper/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6">
         <div className="flex items-center gap-2">
           <span className="text-2xl leading-none">🪗</span>
           <span className="font-display text-lg font-bold">
@@ -41,15 +44,56 @@ export function Navbar() {
           </button>
           <button
             type="button"
-            className="flex items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5"
+            className="hidden items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5 sm:flex"
           >
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
               <User className="h-3.5 w-3.5 text-ink/60" />
             </span>
             <span className="text-ink/65">Вихід</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label="Меню"
+            className="rounded-full p-2 text-ink/50 transition hover:bg-ink/5 hover:text-ink md:hidden"
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </div>
+
+      {open && (
+        <div className="border-t border-ink/10 bg-paper px-4 py-3 md:hidden">
+          <ul className="space-y-0.5">
+            {NAV_LINKS.map((link, i) => (
+              <li key={link}>
+                <a
+                  href="#"
+                  onClick={() => setOpen(false)}
+                  className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    i === 0
+                      ? 'bg-accent/5 text-accent'
+                      : 'text-ink/65 hover:bg-ink/5 hover:text-ink'
+                  }`}
+                >
+                  {link}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 border-t border-ink/10 pt-3">
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
+                <User className="h-3.5 w-3.5 text-ink/60" />
+              </span>
+              <span className="text-ink/65">Вихід</span>
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   )
 }

@@ -15,6 +15,7 @@ import { DownloadBar } from './components/DownloadBar'
 import { Navbar } from './components/Navbar'
 import { Hero } from './components/Hero'
 import { Spinner } from './components/ui/Spinner'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { useAnalysis } from './hooks/useAnalysis'
 import { useArrangement, type Mode } from './hooks/useArrangement'
 import { blankMusicXML, KEY_OPTIONS, METER_OPTIONS } from './lib/blankScore'
@@ -209,7 +210,7 @@ export default function App() {
       <Hero />
 
       {/* ── Input card ──────────────────────────────────────────── */}
-      <div className="relative z-10 mx-auto -mt-4 max-w-6xl px-6">
+      <div className="relative z-10 mx-auto -mt-4 max-w-6xl px-3 sm:px-6">
         <div className="overflow-hidden rounded-2xl border border-ink/5 bg-white shadow-xl">
           {/* Input mode tabs */}
           <div className="flex border-b border-ink/10">
@@ -249,12 +250,14 @@ export default function App() {
               {/* Compose melody */}
               {inputMode === 'compose' && (
                 <div className="space-y-3">
-                  <FlatEmbedEditor
-                    key={`compose-${editorMeter}-${editorFifths}`}
-                    musicXml={blankXml}
-                    onEmbedChange={(embed) => { composeEmbedRef.current = embed }}
-                    height="480px"
-                  />
+                  <ErrorBoundary label="Редактор" resetKey={blankXml}>
+                    <FlatEmbedEditor
+                      key={`compose-${editorMeter}-${editorFifths}`}
+                      musicXml={blankXml}
+                      onEmbedChange={(embed) => { composeEmbedRef.current = embed }}
+                      height="480px"
+                    />
+                  </ErrorBoundary>
                   <button
                     type="button"
                     onClick={handleAnalyzeFromCompose}
@@ -275,7 +278,7 @@ export default function App() {
             </div>
 
             {/* Right — Settings */}
-            <div className="w-72 shrink-0 p-6">
+            <div className="w-full p-5 sm:p-6 md:w-72 md:shrink-0">
               <h3 className="font-semibold text-accent">Налаштування</h3>
               <div className="mt-4 space-y-4">
 
@@ -366,12 +369,30 @@ export default function App() {
 
       {/* ── Results ─────────────────────────────────────────────── */}
       {arrangement.result && (
-        <div className="mx-auto mt-8 max-w-6xl px-6 pb-16">
+        <div className="mx-auto mt-6 max-w-6xl px-3 pb-12 sm:mt-8 sm:px-6 sm:pb-16">
           <div className="overflow-hidden rounded-2xl border border-ink/5 bg-white shadow-xl">
-            <div className="flex min-h-160">
+            {/* Mobile: horizontal tab bar */}
+            <div className="flex overflow-x-auto border-b border-ink/10 md:hidden">
+              {SIDEBAR_TABS.map(({ id, Icon, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveTab(id)}
+                  className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition ${
+                    activeTab === id
+                      ? 'border-accent text-accent'
+                      : 'border-transparent text-ink/55 hover:text-ink'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
 
-              {/* Sidebar */}
-              <div className="w-48 shrink-0 border-r border-ink/10 p-4">
+            <div className="flex md:min-h-160">
+              {/* Desktop: vertical sidebar */}
+              <div className="hidden w-48 shrink-0 border-r border-ink/10 p-4 md:block">
                 <nav className="space-y-1">
                   {SIDEBAR_TABS.map(({ id, Icon, label }) => (
                     <button
@@ -429,7 +450,9 @@ export default function App() {
                     </div>
 
                     <div className="flex-1 p-4">
-                      <SheetViewer musicxml={arrangement.result.musicxml} />
+                      <ErrorBoundary label="Партитура" resetKey={arrangement.result.musicxml}>
+                        <SheetViewer musicxml={arrangement.result.musicxml} />
+                      </ErrorBoundary>
                     </div>
                   </>
                 )}
@@ -462,11 +485,13 @@ export default function App() {
                         }
                       </button>
                     </div>
-                    <FlatEmbedEditor
-                      musicXml={arrangement.result.musicxml}
-                      onEmbedChange={(embed) => { flatEmbedRef.current = embed }}
-                      height="600px"
-                    />
+                    <ErrorBoundary label="Редактор" resetKey={arrangement.result.musicxml}>
+                      <FlatEmbedEditor
+                        musicXml={arrangement.result.musicxml}
+                        onEmbedChange={(embed) => { flatEmbedRef.current = embed }}
+                        height="600px"
+                      />
+                    </ErrorBoundary>
                   </div>
                 )}
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import io
 import json
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -239,6 +241,50 @@ async def merge_endpoint(request: Request, download: bool = Query(False)):
             'meter': ctx.ts.ratioString,
             'sections': [{'preset': k, 'name': v.name} for k, v in ps.items()],
         }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(500, str(exc)) from exc
+    finally:
+        path.unlink(missing_ok=True)
+
+
+@app.post('/compress')
+async def compress_endpoint(request: Request):
+    """
+    Упаковує переданий MusicXML у формат .mxl (ZIP) без повторного аранжування.
+
+    Фронтенд передає вже готову (і можливо відредаговану) партитуру — не оригінальну
+    мелодію. Без цього ендпоінта кнопка «.mxl» завжди перегенеровувала аранжування
+    з нуля, знищуючи ручні правки користувача.
+    """
+    path, filename = await _read_source(request)
+    stem = Path(filename).stem if filename else 'arranged'
+    try:
+        xml_bytes = path.read_bytes()
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(
+                'META-INF/container.xml',
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<container>\n'
+                '  <rootfiles>\n'
+                '    <rootfile full-path="score.xml"\n'
+                '              media-type="application/vnd.recordare.musicxml+xml"/>\n'
+                '  </rootfiles>\n'
+                '</container>',
+            )
+            zf.writestr('score.xml', xml_bytes)
+        buf.seek(0)
+        out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
+        out.write(buf.read())
+        out.close()
+        out_path = Path(out.name)
+        return FileResponse(
+            str(out_path),
+            media_type='application/octet-stream',
+            filename=stem + '.mxl',
+        )
     except HTTPException:
         raise
     except Exception as exc:

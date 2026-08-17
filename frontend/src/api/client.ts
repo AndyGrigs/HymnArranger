@@ -116,13 +116,11 @@ export const api = {
     return postBlob('/midi', source, {}, signal)
   },
 
-  /** Готовий .mxl на завантаження. */
-  download(
-    source: ScoreSource,
-    kind: 'arrange' | 'suite' | 'merge',
-    params: Record<string, unknown> = {},
-    signal?: AbortSignal,
-  ) {
-    return postBlob(`/${kind}`, source, { ...params, download: true }, signal)
+  /**
+   * Стискає переданий MusicXML у формат .mxl (ZIP) без повторного аранжування.
+   * Завжди приймає вже готову партитуру з пам'яті — включно з ручними правками.
+   */
+  compress(source: ScoreSource, signal?: AbortSignal) {
+    return postBlob('/compress', source, {}, signal)
   },
 }

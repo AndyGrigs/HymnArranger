@@ -1,15 +1,12 @@
 import { useState } from 'react'
 import { Download, FileMusic } from 'lucide-react'
 import { api, ApiError } from '../api'
-import type { ScoreSource } from '../api'
 import { saveBlob, safeName } from '../lib/download'
 import { Spinner } from './ui/Spinner'
 import type { Mode } from '../hooks/useArrangement'
 
 interface Props {
-  source: ScoreSource
   mode: Mode
-  params: Record<string, unknown>
   musicxml: string
   fileName: string
 }
@@ -20,24 +17,23 @@ const SUFFIX: Record<Mode, string> = {
   merge: 'порівняння',
 }
 
-export function DownloadBar({ source, mode, params, musicxml, fileName }: Props) {
+export function DownloadBar({ mode, musicxml, fileName }: Props) {
   const [busy, setBusy] = useState<'mxl' | 'midi' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // MusicXML уже є в пам'яті після генерації — зайвий запит до сервера
-  // тут не потрібен, зберігаємо .musicxml напряму з рядка.
+  // MusicXML уже є в пам'яті — зберігаємо напряму, без зайвого запиту.
   function saveMusicXml() {
     const blob = new Blob([musicxml], { type: 'application/vnd.recordare.musicxml+xml' })
     saveBlob(blob, safeName(fileName, SUFFIX[mode], 'musicxml'))
   }
 
-  // Стиснений .mxl уміє робити тільки music21 на бекенді.
+  // Стиснений .mxl: передаємо вже готовий musicxml на бекенд лише для zip-упаковки.
+  // Раніше тут іде перегенерація з оригінальної мелодії — ручні правки губилися.
   async function saveMxl() {
     setBusy('mxl')
     setError(null)
     try {
-      const kind = mode === 'preset' ? 'arrange' : mode
-      const blob = await api.download(source, kind, params)
+      const blob = await api.compress({ musicxml })
       saveBlob(blob, safeName(fileName, SUFFIX[mode], 'mxl'))
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Завантаження не вдалося.')

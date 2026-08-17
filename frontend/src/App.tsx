@@ -65,7 +65,6 @@ export default function App() {
   // Settings (meter/key sync with analysis result when available)
   const [editorMeter,  setEditorMeter]  = useState('4/4')
   const [editorFifths, setEditorFifths] = useState(0)
-  const [bpm,          setBpm]          = useState(84)
 
   // Blank MusicXML for compose mode — remounts editor when meter/key change
   const blankXml = useMemo(
@@ -191,16 +190,11 @@ export default function App() {
     }
   }
 
-  // Parse tempo from first section detail string "84 уд/хв · …"
   const displayTempo = (() => {
     const raw = arrangement.result?.sections?.[0]?.detail
-    if (!raw) return bpm
-    const m = raw.match(/^(\d+)/)
-    return m ? parseInt(m[1]) : bpm
+    const m = raw?.match(/^(\d+)/)
+    return m ? parseInt(m[1]) : null
   })()
-
-  const btnBase =
-    'flex h-7 w-7 items-center justify-center rounded border border-ink/15 text-sm text-muted transition hover:bg-ink/5'
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -308,22 +302,6 @@ export default function App() {
                   </select>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted">Темп (BPM)</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBpm((b) => Math.max(40, b - 4))}
-                      className={btnBase}
-                    >—</button>
-                    <span className="w-10 text-center text-sm font-medium">{bpm}</span>
-                    <button
-                      type="button"
-                      onClick={() => setBpm((b) => Math.min(240, b + 4))}
-                      className={btnBase}
-                    >+</button>
-                  </div>
-                </div>
 
                 {analysis.analysis ? (
                   <div className="mt-2 border-t border-ink/10 pt-4">
@@ -442,10 +420,12 @@ export default function App() {
                         )}
                         <div ref={midiHostRef} className={midiReady ? 'min-w-55' : ''} />
 
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <span className="text-muted">BPM</span>
-                          <span className="font-medium">{displayTempo}</span>
-                        </div>
+                        {displayTempo != null && (
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <span className="text-muted">BPM</span>
+                            <span className="font-medium">{displayTempo}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -519,15 +499,11 @@ export default function App() {
                         arrangement.result.mode
                       }
                     />
-                    {analysis.source && (
-                      <DownloadBar
-                        source={analysis.source}
-                        mode={arrangement.result.mode}
-                        params={arrangement.result.params}
-                        musicxml={arrangement.result.musicxml}
-                        fileName={analysis.fileName ?? 'гімн'}
-                      />
-                    )}
+                    <DownloadBar
+                      mode={arrangement.result.mode}
+                      musicxml={arrangement.result.musicxml}
+                      fileName={analysis.fileName ?? 'гімн'}
+                    />
                   </div>
                 )}
 

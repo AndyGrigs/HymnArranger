@@ -40,9 +40,12 @@ A separate, fully-trained neural network was also built and evaluated as a **res
 ┌───────────────────▼─────────────────────┐
 │      BACKEND — FastAPI (Python)         │
 │  GET  /health                           │
-│  POST /presets   — meter + preset list  │
-│  POST /arrange    — mode=single|all|suite│
-│  POST /midi                             │
+│  POST /analyze  — meter, chords, presets│
+│  POST /arrange  — single arrangement    │
+│  POST /suite    — theme + variations    │
+│  POST /merge    — all presets in one    │
+│  POST /compress — pack to .mxl          │
+│  POST /midi     — convert to MIDI       │
 └───────────────────┬─────────────────────┘
                      │
 ┌───────────────────▼─────────────────────┐
@@ -58,8 +61,6 @@ A separate, fully-trained neural network was also built and evaluated as a **res
    an encoder-decoder Music Transformer (RPR), trained on
    Google Colab, kept as a documented baseline comparison.
 ```
-
-> ⚠️ **Known gap:** the frontend API client currently calls `/analyze`, `/suite`, and `/merge`, which are not implemented in the current backend (`hymnarranger/api.py` only exposes `/health`, `/presets`, `/arrange`, `/midi`). This needs to be reconciled before the UI works fully end-to-end — see [Roadmap](#-roadmap).
 
 ---
 
@@ -82,7 +83,7 @@ A separate, fully-trained neural network was also built and evaluated as a **res
 - 📚 "All presets" mode: every texture rendered back-to-back in one score, for comparison
 - 👁️ In-browser sheet preview (OpenSheetMusicDisplay) and MIDI playback (GM Accordion program)
 - ✍️ Write a melody directly in the browser via an embedded Flat.io editor, or upload a file
-- 📄 Download the result as MusicXML or MIDI
+- 📄 Download the result as MusicXML, compressed .mxl, or MIDI
 - 🧪 A documented neural-network baseline for methodological comparison (see below)
 
 ---
@@ -100,7 +101,7 @@ A separate, fully-trained neural network was also built and evaluated as a **res
 | **Arrangement engine** | music21 | Symbolic music parsing & generation |
 | **ML baseline (research only)** | PyTorch + Hugging Face Transformers | Encoder-decoder Music Transformer w/ RPR |
 | **Dataset prep** | music21, Audiveris | Melody extraction, PDF → MusicXML |
-| **Testing** | pytest, httpx | Unit tests, FastAPI test client |
+| **Testing** | pytest, httpx2 | Unit tests, FastAPI test client |
 
 ---
 
@@ -123,7 +124,7 @@ HymnArranger/
 │   ├── meters/
 │   │   ├── simple.py        # 2/4, 3/4, 4/4 presets
 │   │   └── compound.py      # 6/8, 9/8, 12/8 presets
-│   └── api.py                # FastAPI app (/health, /presets, /arrange, /midi)
+│   └── api.py                # FastAPI app (/health, /analyze, /arrange, /suite, /merge, /compress, /midi)
 │
 ├── frontend/                 # React + Vite + TypeScript app
 │   └── src/
@@ -178,7 +179,7 @@ npm install
 npm run dev
 ```
 
-> The frontend proxies `/api/*` to the backend during development. As noted above, a few endpoints it expects (`/analyze`, `/suite`, `/merge`) still need to be added to or reconciled with the backend.
+> The frontend proxies `/api/*` to the backend during development.
 
 ---
 
@@ -213,7 +214,7 @@ The dataset is collected from publicly available Christian choral music (**noty-
 - [x] Music Transformer trained as a documented research baseline
 - [x] FastAPI backend for the rule-based engine
 - [x] React + Vite frontend (upload, in-browser editor, sheet + MIDI, download)
-- [ ] Reconcile frontend API client with backend endpoints (`/analyze`, `/suite`, `/merge`)
+- [x] Frontend API client reconciled with backend endpoints
 - [ ] Deployment (Docker config drafted for dev, production deploy not yet set up)
 - [ ] Add a `LICENSE` file matching the badge above
 - [ ] Style parameters for instruments beyond bayan (long-term)

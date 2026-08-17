@@ -28,4 +28,4 @@ python-multipart==0.0.32      # завантаження файлів через
 
 # ── Розробка і тести ──────────────────────────────────────────────
 pytest==9.1.1
-httpx==0.28.1                 # потрібен для fastapi.testclient
+httpx2                        # потрібен для starlette.testclient (starlette 1.x)

@@ -5,6 +5,7 @@ import {
   Play, Link, Check,
 } from 'lucide-react'
 import { FileDropzone } from './components/FileDropzone'
+import { GeneratePanel } from './components/GeneratePanel'
 import { AnalysisPanel } from './components/AnalysisPanel'
 import { SheetViewer } from './components/SheetViewer'
 import { SectionList } from './components/SectionList'
@@ -71,11 +72,11 @@ export default function App() {
     [editorMeter, editorFifths],
   )
 
-  // Generation params
-  const [mode]     = useState<Mode>('suite')
+  // Generation params — all three need setters so GeneratePanel can control them
+  const [mode,     setMode]     = useState<Mode>('suite')
   const [preset,   setPreset]   = useState('')
-  const [seed]     = useState<number | null>(null)
-  const [varyBass] = useState(true)
+  const [seed,     setSeed]     = useState<number | null>(null)
+  const [varyBass, setVaryBass] = useState(true)
 
   // Inline MIDI player in the Партитура toolbar
   const midiHostRef = useRef<HTMLDivElement>(null)
@@ -329,15 +330,33 @@ export default function App() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleGenerate}
-                  disabled={!analysis.source || arrangement.loading || analysis.loading}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                >
-                  {arrangement.loading ? <Spinner /> : <Music className="h-4 w-4" />}
-                  {arrangement.loading ? 'Генерую…' : 'Створити партитуру'}
-                </button>
+                {analysis.analysis ? (
+                  <div className="mt-2 border-t border-ink/10 pt-4">
+                    <GeneratePanel
+                      bare
+                      analysis={analysis.analysis}
+                      mode={mode}
+                      onModeChange={setMode}
+                      preset={preset}
+                      onPresetChange={setPreset}
+                      seed={seed}
+                      onSeedChange={setSeed}
+                      varyBass={varyBass}
+                      onVaryBassChange={setVaryBass}
+                      onGenerate={handleGenerate}
+                      loading={arrangement.loading}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-semibold text-white opacity-40"
+                  >
+                    <Music className="h-4 w-4" />
+                    Створити партитуру
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -16,20 +16,22 @@ interface Props {
   onVaryBassChange: (value: boolean) => void
   onGenerate: () => void
   loading: boolean
+  /** Вбудований режим: рендерить вміст без Card-обгортки (для панелі Налаштування). */
+  bare?: boolean
 }
 
 const MODES: { id: Mode; label: string; hint: string }[] = [
-  { id: 'suite', label: 'Тема з варіаціями', hint: 'готова п’єса з дев’яти розділів' },
-  { id: 'preset', label: 'Одна фактура', hint: 'конкретний пресет на весь гімн' },
-  { id: 'merge', label: 'Порівняння', hint: 'усі доступні пресети підряд' },
+  { id: 'suite',  label: 'Тема з варіаціями', hint: "готова п'єса з дев'яти розділів"  },
+  { id: 'preset', label: 'Одна фактура',       hint: 'конкретний пресет на весь гімн'  },
+  { id: 'merge',  label: 'Порівняння',          hint: 'усі доступні пресети підряд'     },
 ]
 
 export function GeneratePanel(props: Props) {
-  const { analysis, mode, loading } = props
+  const { analysis, mode, loading, bare } = props
 
-  return (
-    <Card title="Аранжування">
-      <div className="grid gap-2 sm:grid-cols-3">
+  const body = (
+    <>
+      <div className="grid gap-2 grid-cols-1 sm:grid-cols-3">
         {MODES.map((item) => {
           const active = mode === item.id
           return (
@@ -76,7 +78,7 @@ export function GeneratePanel(props: Props) {
               type="checkbox"
               checked={props.varyBass}
               onChange={(e) => props.onVaryBassChange(e.target.checked)}
-              className="h-4 w-4 accent-[var(--color-accent)]"
+              className="h-4 w-4 accent-accent"
             />
             Чергувати фактуру лівої руки між розділами
           </label>
@@ -122,6 +124,9 @@ export function GeneratePanel(props: Props) {
         {loading ? <Spinner /> : <Wand2 className="h-4 w-4" />}
         {loading ? 'Генерую…' : 'Аранжувати'}
       </button>
-    </Card>
+    </>
   )
+
+  if (bare) return <div>{body}</div>
+  return <Card title="Аранжування">{body}</Card>
 }

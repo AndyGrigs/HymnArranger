@@ -73,6 +73,32 @@ export interface MergeOut {
   sections: MergeSection[]
 }
 
+/** Один розділ у відповіді /style. */
+export interface StyleSection {
+  index: number
+  texture: string
+  name: string
+  octave: number
+  link_after: boolean
+}
+
+/** POST /style */
+export interface StyleOut {
+  musicxml: string
+  style: string
+  meter: string
+  key: string
+  sections: StyleSection[]
+}
+
+/** Параметри генерації стилю. */
+export interface StyleParams {
+  style?: string
+  strophes?: number
+  coda?: boolean
+  [key: string]: unknown
+}
+
 /** GET /health */
 export interface HealthOut {
   status: string

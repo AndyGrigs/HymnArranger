@@ -14,6 +14,10 @@ interface Props {
   onSeedChange: (seed: number | null) => void
   varyBass: boolean
   onVaryBassChange: (value: boolean) => void
+  strophes: number
+  onStrophesChange: (value: number) => void
+  coda: boolean
+  onCodaChange: (value: boolean) => void
   onGenerate: () => void
   loading: boolean
   /** Вбудований режим: рендерить вміст без Card-обгортки (для панелі Налаштування). */
@@ -24,6 +28,7 @@ const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: 'suite',  label: 'Тема з варіаціями', hint: "готова п'єса з дев'яти розділів"  },
   { id: 'preset', label: 'Одна фактура',       hint: 'конкретний пресет на весь гімн'  },
   { id: 'merge',  label: 'Порівняння',          hint: 'усі доступні пресети підряд'     },
+  { id: 'style',  label: 'Стиль Сакали',        hint: 'строфи, хроматичні зв\'язки, кода' },
 ]
 
 export function GeneratePanel(props: Props) {
@@ -31,7 +36,7 @@ export function GeneratePanel(props: Props) {
 
   const body = (
     <>
-      <div className="grid gap-2 grid-cols-1 sm:grid-cols-3">
+      <div className="grid gap-2 grid-cols-2">
         {MODES.map((item) => {
           const active = mode === item.id
           return (
@@ -112,6 +117,35 @@ export function GeneratePanel(props: Props) {
               Однакове зерно завжди дає однаковий результат.
             </p>
           </div>
+        </div>
+      )}
+
+      {mode === 'style' && (
+        <div className="mt-5 space-y-3">
+          <label className="block">
+            <span className="text-xs uppercase tracking-wide text-muted">
+              Кількість строф
+            </span>
+            <select
+              value={props.strophes}
+              onChange={(e) => props.onStrophesChange(Number(e.target.value))}
+              className="mt-1.5 w-full rounded border border-ink/15 bg-white px-3 py-2 text-sm"
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={props.coda}
+              onChange={(e) => props.onCodaChange(e.target.checked)}
+              className="h-4 w-4 accent-accent"
+            />
+            Додати коду (хроматичний спуск)
+          </label>
         </div>
       )}
 

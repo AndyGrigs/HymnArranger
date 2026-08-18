@@ -5,6 +5,8 @@ import type {
   HealthOut,
   MergeOut,
   ScoreSource,
+  StyleOut,
+  StyleParams,
   SuiteOut,
   SuiteParams,
 } from './types'
@@ -109,6 +111,11 @@ export const api = {
   /** Усі доступні пресети підряд — для порівняння. */
   merge(source: ScoreSource, signal?: AbortSignal) {
     return postJson<MergeOut>('/merge', source, undefined, signal)
+  },
+
+  /** Стильова обробка: строфи різної фактури, зв'язки, кода. */
+  style(source: ScoreSource, params: StyleParams = {}, signal?: AbortSignal) {
+    return postJson<StyleOut>('/style', source, params, signal)
   },
 
   /** Конвертує передану партитуру MusicXML у MIDI без повторного аранжування. */

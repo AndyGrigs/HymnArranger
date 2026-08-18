@@ -72,11 +72,13 @@ export default function App() {
     [editorMeter, editorFifths],
   )
 
-  // Generation params — all three need setters so GeneratePanel can control them
+  // Generation params — all four need setters so GeneratePanel can control them
   const [mode,     setMode]     = useState<Mode>('suite')
   const [preset,   setPreset]   = useState('')
   const [seed,     setSeed]     = useState<number | null>(null)
   const [varyBass, setVaryBass] = useState(true)
+  const [strophes, setStrophes] = useState(5)
+  const [coda,     setCoda]     = useState(true)
 
   // Inline MIDI player in the Партитура toolbar
   const midiHostRef = useRef<HTMLDivElement>(null)
@@ -162,7 +164,7 @@ export default function App() {
   async function handleGenerate() {
     if (!analysis.source) return
     setEditsApplied(false)
-    arrangement.generate(analysis.source, mode, { preset, seed, varyBass })
+    arrangement.generate(analysis.source, mode, { preset, seed, varyBass, strophes, coda })
   }
 
   async function handlePlayMidi() {
@@ -316,6 +318,10 @@ export default function App() {
                       onSeedChange={setSeed}
                       varyBass={varyBass}
                       onVaryBassChange={setVaryBass}
+                      strophes={strophes}
+                      onStrophesChange={setStrophes}
+                      coda={coda}
+                      onCodaChange={setCoda}
                       onGenerate={handleGenerate}
                       loading={arrangement.loading}
                     />

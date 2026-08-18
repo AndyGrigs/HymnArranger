@@ -15,6 +15,7 @@ const SUFFIX: Record<Mode, string> = {
   suite: 'варіації',
   preset: 'аранжування',
   merge: 'порівняння',
+  style: 'сакала',
 }
 
 export function DownloadBar({ mode, musicxml, fileName }: Props) {

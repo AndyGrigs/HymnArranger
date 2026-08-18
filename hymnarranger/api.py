@@ -1,324 +1,379 @@
-"""FastAPI backend for HymnArranger."""
+"""HTTP-інтерфейс до аранжувальника.
+
+Розрахований на фронтенд із вбудованим нотним редактором: той віддає
+MusicXML рядком (`embed.getMusicXML()`), сервер повертає теж рядок, який
+одразу заходить у `embed.loadMusicXML()`. Тому типова відповідь — JSON
+із полем `musicxml`, а не файл на завантаження; файл віддається лише
+коли клієнт просить `?download=true`.
+
+Запуск:
+    uvicorn hymnarranger.api:app --reload
+"""
 
 from __future__ import annotations
 
 import io
-import json
+import os
 import tempfile
-import zipfile
-from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, List
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from fastapi.responses import StreamingResponse, HTMLResponse
+from pydantic import BaseModel, Field
 
-from .assembly import arrange, arrange_multi, save, to_musicxml_string
-from .meters import presets, is_compound
+from . import meters
 from .parsing import parse_input
-from .suite import plan_suite
+from .assembly import (arrange, arrange_multi, save, to_musicxml_string,
+                       midi_bytes)
+from .suite import arrange_suite, plan_suite
+from . import styles
 
+MAX_BYTES = 5 * 1024 * 1024
+ALLOWED_SUFFIX = ('.mxl', '.musicxml', '.xml')
 
-class ScoreIn(BaseModel):
-    """Лишено для документації: тіло запиту у JSON-режимі."""
-    musicxml: str
+app = FastAPI(
+    title='HymnArranger API',
+    version='2.0',
+    description='Генерує баянне аранжування з мелодії та акордових символів.',
+)
 
-
-async def _read_source(request: Request) -> Tuple[Path, Optional[str]]:
-    """
-    Приймає ноти двома способами й повертає (шлях до тимчасового файлу, ім'я файлу).
-
-    ВАЖЛИВО: розбір іде вручну через Request, а не через File(...)/Body(...)
-    у сигнатурі. Якщо в одному ендпоінті оголосити і File, і Body-модель,
-    FastAPI вважає весь запит multipart/form-data — і будь-який
-    application/json тоді валиться в 422, бо Body ніколи не заповниться.
-    Саме через це раніше не працював вбудований нотний редактор.
-    """
-    ctype = (request.headers.get('content-type') or '').lower()
-
-    # --- JSON: {"musicxml": "<score-partwise ...>"} ---
-    if ctype.startswith('application/json'):
-        try:
-            payload = await request.json()
-        except (json.JSONDecodeError, ValueError) as exc:
-            raise HTTPException(422, f'Тіло запиту не є коректним JSON: {exc}') from exc
-        if not isinstance(payload, dict):
-            raise HTTPException(422, 'Очікується JSON-обʼєкт із полем "musicxml".')
-        xml = payload.get('musicxml')
-        if not isinstance(xml, str) or not xml.strip():
-            raise HTTPException(422, 'Поле "musicxml" відсутнє або порожнє.')
-        with tempfile.NamedTemporaryFile(suffix='.xml', delete=False,
-                                         mode='w', encoding='utf-8') as tmp:
-            tmp.write(xml)
-            return Path(tmp.name), None
-
-    # --- multipart/form-data з полем "file" ---
-    if ctype.startswith('multipart/form-data'):
-        form = await request.form()
-        upload = form.get('file')
-        if upload is None or not hasattr(upload, 'read'):
-            raise HTTPException(422, 'У формі немає файлу в полі "file".')
-        filename = getattr(upload, 'filename', None) or 'melody.mxl'
-        suffix = Path(filename).suffix or '.mxl'
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            tmp.write(await upload.read())
-            return Path(tmp.name), filename
-
-    raise HTTPException(
-        422,
-        'Надішли або multipart-файл у полі "file", '
-        'або JSON-тіло з полем "musicxml".',
-    )
-
-
-app = FastAPI(title='HymnArranger API')
-
+# Фронтенд живе на іншому порту, тож без CORS браузер заблокує запити.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['*'],
-    allow_methods=['*'],
+    allow_credentials=False,
+    allow_methods=['GET', 'POST'],
     allow_headers=['*'],
 )
 
 
+# =================================================================
+#  Схеми
+# =================================================================
+
+class ScoreIn(BaseModel):
+    musicxml: str = Field(..., description='Вміст MusicXML рядком')
+
+
+class PresetOut(BaseModel):
+    id: str
+    name: str
+    tempo: int
+    mode: str
+
+
+class ChordOut(BaseModel):
+    offset: float
+    figure: str
+
+
+class AnalyzeOut(BaseModel):
+    meter: str
+    meter_family: str
+    key: str
+    sharps: int
+    measures: int
+    total_ql: float
+    pickup_ql: float
+    chord_source: str
+    chords: List[ChordOut]
+    warnings: List[str]
+    presets: List[PresetOut]
+    suite: List[dict]
+
+
+class ArrangeOut(BaseModel):
+    musicxml: str
+    preset: str
+    name: str
+    tempo: int
+    meter: str
+
+
+class SuiteOut(BaseModel):
+    musicxml: str
+    meter: str
+    meter_family: str
+    seed: Optional[int]
+    sections: List[dict]
+
+
+# =================================================================
+#  Допоміжне
+# =================================================================
+
+async def _read_source(request: Request) -> str:
+    """
+    Приймає партитуру в будь-якому з трьох виглядів:
+      * multipart/form-data з полем "file"  — завантаження .mxl / .musicxml
+      * application/json  {"musicxml": "..."} — те, що віддає нотний редактор
+      * сирий XML у тілі із Content-Type application/xml
+
+    Читання зроблено на рівні Request, а не через File()/Body(): якщо в
+    одному ендпоінті оголосити і те, і те, FastAPI завжди чекає multipart
+    і JSON просто не розбирає.
+
+    Повертає шлях до тимчасового файлу — music21 читає з диска, а .mxl
+    взагалі є zip-архівом, тож у пам'яті його не розібрати.
+    """
+    ctype = (request.headers.get('content-type') or '').lower()
+    data, suffix = None, '.musicxml'
+
+    if ctype.startswith('multipart/form-data'):
+        form = await request.form()
+        up = form.get('file')
+        if up is None or not hasattr(up, 'read'):
+            raise HTTPException(400, 'У формі немає поля "file"')
+        ext = os.path.splitext(getattr(up, 'filename', '') or '')[1].lower()
+        if ext and ext not in ALLOWED_SUFFIX:
+            raise HTTPException(400, f'Непідтримуване розширення {ext}. '
+                                     f'Очікується {", ".join(ALLOWED_SUFFIX)}')
+        data = await up.read()
+        suffix = ext or '.musicxml'
+    else:
+        raw = await request.body()
+        if raw and ctype.startswith('application/json'):
+            import json
+            try:
+                payload = json.loads(raw.decode('utf-8'))
+            except Exception:
+                raise HTTPException(400, 'Тіло не є коректним JSON')
+            text = (payload or {}).get('musicxml')
+            if not text or not str(text).strip():
+                raise HTTPException(400, 'У JSON немає непорожнього поля "musicxml"')
+            data = str(text).encode('utf-8')
+        elif raw:
+            data = raw
+
+    if not data:
+        raise HTTPException(400, 'Потрібен файл (form-data "file"), '
+                                 'поле "musicxml" у JSON або сирий XML у тілі')
+    if len(data) > MAX_BYTES:
+        raise HTTPException(413, f'Файл більший за {MAX_BYTES // 1024 // 1024} МБ')
+
+    fd, path = tempfile.mkstemp(suffix=suffix)
+    with os.fdopen(fd, 'wb') as fh:
+        fh.write(data)
+    return path
+
+
+def _context(path: str):
+    try:
+        return parse_input(path)
+    except Exception as exc:
+        raise HTTPException(422, f'Не вдалося прочитати партитуру: {exc}')
+
+
+def _download(score, filename: str) -> StreamingResponse:
+    fd, tmp = tempfile.mkstemp(prefix=filename[:-4] + '_', suffix='.mxl')
+    os.close(fd)
+    try:
+        save(score, tmp)
+        payload = open(tmp, 'rb').read()
+    finally:
+        os.unlink(tmp)
+    return StreamingResponse(
+        io.BytesIO(payload),
+        media_type='application/vnd.recordare.musicxml',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+
+def _download_name(stem: str) -> str:
+    keep = ''.join(ch for ch in stem if ch.isalnum() or ch in '-_')
+    return (keep or 'score') + '.mxl'
+
+
+# =================================================================
+#  Ендпоінти
+# =================================================================
+
+STATIC_DIR = os.path.join(os.path.dirname(__file__), 'static')
+
+
+@app.get('/', response_class=HTMLResponse)
+def demo_page():
+    """Демо-сторінка: завантажити мелодію, побачити ноти і почути баян."""
+    path = os.path.join(STATIC_DIR, 'demo.html')
+    if not os.path.exists(path):
+        return HTMLResponse('<h1>HymnArranger API</h1>'
+                            '<p>Документація: <a href="/docs">/docs</a></p>')
+    return HTMLResponse(open(path, encoding='utf-8').read())
+
+
 @app.get('/health')
 def health():
-    return {'status': 'ok'}
+    return {'status': 'ok', 'version': app.version}
 
 
-@app.post('/analyze')
+@app.post('/analyze', response_model=AnalyzeOut)
 async def analyze(request: Request, seed: Optional[int] = Query(None)):
-    path, _ = await _read_source(request)
+    """
+    Що система побачила у вхідному файлі і що збирається з ним зробити.
+    Викликати ПЕРЕД генерацією: тут повертаються попередження на кшталт
+    "акордів не знайдено", і клієнт може виправити ноти, не чекаючи
+    порожньої лівої руки у відповіді.
+    """
+    path = await _read_source(request)
     try:
-        ctx = parse_input(str(path))
-        ps = presets(ctx.ts)
-        steps = plan_suite(ctx.ts, seed=seed)
-        measures = round(ctx.total_ql / ctx.ts.barDuration.quarterLength)
-        return {
-            'meter': ctx.ts.ratioString,
-            'meter_family': 'compound' if is_compound(ctx.ts) else 'simple',
-            'key': ctx.key.name,
-            'sharps': ctx.key.sharps,
-            'measures': measures,
-            'total_ql': ctx.total_ql,
-            'pickup_ql': ctx.pickup_ql,
-            'chord_source': ctx.chord_source,
-            'chords': [{'offset': off, 'figure': cs.figure} for off, cs in ctx.chords],
-            'warnings': ctx.warnings,
-            'presets': [
-                {'id': k, 'name': v.name, 'tempo': v.tempo or 84, 'mode': v.mode}
-                for k, v in ps.items()
-            ],
-            'suite': [
-                {
-                    'index': i + 1,
-                    'preset': n,
-                    'name': cfg.name,
-                    'tempo': cfg.tempo or 84,
-                    'bass': cfg.lh_pattern,
-                }
-                for i, (n, cfg) in enumerate(steps)
-            ],
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(500, str(exc)) from exc
+        ctx = _context(path)
+        ts = ctx.ts
+        presets = meters.presets(ts)
+        sections = plan_suite(ts, seed=seed)
+        return AnalyzeOut(
+            meter=ts.ratioString,
+            meter_family='compound' if meters.is_compound(ts) else 'simple',
+            key=str(ctx.key),
+            sharps=ctx.key.sharps,
+            measures=int(round((ctx.total_ql - ctx.pickup_ql)
+                               / ts.barDuration.quarterLength)),
+            total_ql=ctx.total_ql,
+            pickup_ql=ctx.pickup_ql,
+            chord_source=ctx.chord_source,
+            chords=[ChordOut(offset=o, figure=c.figure or '') for o, c in ctx.chords],
+            warnings=ctx.warnings,
+            presets=[PresetOut(id=k, name=c.name, tempo=c.tempo or 84, mode=c.mode)
+                     for k, c in presets.items()],
+            suite=[{'index': s.index, 'preset': s.preset, 'name': s.name,
+                    'tempo': s.tempo, 'bass': s.bass} for s in sections],
+        )
     finally:
-        path.unlink(missing_ok=True)
+        os.unlink(path)
 
 
 @app.post('/arrange')
-async def arrange_endpoint(
-    request: Request,
-    preset: Optional[str] = Query(None),
-    download: bool = Query(False),
-):
-    path, filename = await _read_source(request)
-    stem = Path(filename).stem if filename else 'arranged'
+async def arrange_one(request: Request,
+                      preset: str = Query('theme'),
+                      download: bool = Query(False)):
+    """Один варіант аранжування."""
+    path = await _read_source(request)
     try:
-        ctx = parse_input(str(path))
-        ps = presets(ctx.ts)
-        name = preset or next(iter(ps))
-        if name not in ps:
-            raise HTTPException(400, f'Unknown preset {name!r}. Available: {", ".join(ps)}')
-        cfg = ps[name]
-        score = arrange(str(path), cfg)
-
+        ctx = _context(path)
+        presets = meters.presets(ctx.ts)
+        if preset not in presets:
+            raise HTTPException(
+                404, f'Пресет {preset!r} недоступний для розміру '
+                     f'{ctx.ts.ratioString}. Доступні: {", ".join(presets)}')
+        cfg = presets[preset]
+        score = arrange(path, cfg, quiet=True)
         if download:
-            out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
-            out.close()
-            out_path = Path(out.name)
-            save(score, out_path)
-            return FileResponse(str(out_path), media_type='application/octet-stream',
-                                filename=stem + '_arranged.mxl')
-
-        return {
-            'musicxml': to_musicxml_string(score),
-            'preset': name,
-            'name': cfg.name,
-            'tempo': cfg.tempo or 84,
-            'meter': ctx.ts.ratioString,
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(500, str(exc)) from exc
+            return _download(score, f'{preset}.mxl')
+        return ArrangeOut(musicxml=to_musicxml_string(score), preset=preset,
+                          name=cfg.name, tempo=cfg.tempo or 84,
+                          meter=ctx.ts.ratioString)
     finally:
-        path.unlink(missing_ok=True)
+        os.unlink(path)
 
 
 @app.post('/suite')
-async def suite_endpoint(
-    request: Request,
-    seed: Optional[int] = Query(None),
-    vary_bass: bool = Query(True),
-    download: bool = Query(False),
-):
-    path, filename = await _read_source(request)
-    stem = Path(filename).stem if filename else 'suite'
+async def suite(request: Request,
+                seed: Optional[int] = Query(None),
+                vary_bass: bool = Query(True),
+                download: bool = Query(False)):
+    """Готова п'єса: тема + варіації в одній партитурі."""
+    path = await _read_source(request)
     try:
-        ctx = parse_input(str(path))
-
-        # Один розрахунок плану — і підписи розділів, і сама музика.
-        # Раніше це були два незалежні виклики, тож при seed=None
-        # список у відповіді не збігався з нотами.
-        steps = plan_suite(ctx.ts, seed=seed, vary_bass=vary_bass)
-        score = arrange_multi(str(path), cfgs=[cfg for _, cfg in steps])
-
+        ctx = _context(path)
+        sections = plan_suite(ctx.ts, seed=seed, vary_bass=vary_bass)
+        score = arrange_suite(path, seed=seed, vary_bass=vary_bass, verbose=False)
         if download:
-            out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
-            out.close()
-            out_path = Path(out.name)
-            save(score, out_path)
-            return FileResponse(str(out_path), media_type='application/octet-stream',
-                                filename=stem + '_suite.mxl')
-
-        return {
-            'musicxml': to_musicxml_string(score),
-            'meter': ctx.ts.ratioString,
-            'meter_family': 'compound' if is_compound(ctx.ts) else 'simple',
-            'seed': seed,
-            'sections': [
-                {
-                    'index': i + 1,
-                    'preset': n,
-                    'name': cfg.name,
-                    'tempo': cfg.tempo or 84,
-                    'bass': cfg.lh_pattern,
-                }
-                for i, (n, cfg) in enumerate(steps)
-            ],
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(500, str(exc)) from exc
-    finally:
-        path.unlink(missing_ok=True)
-
-
-@app.post('/merge')
-async def merge_endpoint(request: Request, download: bool = Query(False)):
-    path, filename = await _read_source(request)
-    stem = Path(filename).stem if filename else 'merge'
-    try:
-        ctx = parse_input(str(path))
-        ps = presets(ctx.ts)
-        score = arrange_multi(str(path), presets=list(ps), preset_map=ps)
-
-        if download:
-            out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
-            out.close()
-            out_path = Path(out.name)
-            save(score, out_path)
-            return FileResponse(str(out_path), media_type='application/octet-stream',
-                                filename=stem + '_merge.mxl')
-
-        return {
-            'musicxml': to_musicxml_string(score),
-            'meter': ctx.ts.ratioString,
-            'sections': [{'preset': k, 'name': v.name} for k, v in ps.items()],
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(500, str(exc)) from exc
-    finally:
-        path.unlink(missing_ok=True)
-
-
-@app.post('/compress')
-async def compress_endpoint(request: Request):
-    """
-    Упаковує переданий MusicXML у формат .mxl (ZIP) без повторного аранжування.
-
-    Фронтенд передає вже готову (і можливо відредаговану) партитуру — не оригінальну
-    мелодію. Без цього ендпоінта кнопка «.mxl» завжди перегенеровувала аранжування
-    з нуля, знищуючи ручні правки користувача.
-    """
-    path, filename = await _read_source(request)
-    stem = Path(filename).stem if filename else 'arranged'
-    try:
-        xml_bytes = path.read_bytes()
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr(
-                'META-INF/container.xml',
-                '<?xml version="1.0" encoding="UTF-8"?>\n'
-                '<container>\n'
-                '  <rootfiles>\n'
-                '    <rootfile full-path="score.xml"\n'
-                '              media-type="application/vnd.recordare.musicxml+xml"/>\n'
-                '  </rootfiles>\n'
-                '</container>',
-            )
-            zf.writestr('score.xml', xml_bytes)
-        buf.seek(0)
-        out = tempfile.NamedTemporaryFile(suffix='.mxl', delete=False)
-        out.write(buf.read())
-        out.close()
-        out_path = Path(out.name)
-        return FileResponse(
-            str(out_path),
-            media_type='application/octet-stream',
-            filename=stem + '.mxl',
+            return _download(score, 'suite.mxl')
+        return SuiteOut(
+            musicxml=to_musicxml_string(score),
+            meter=ctx.ts.ratioString,
+            meter_family='compound' if meters.is_compound(ctx.ts) else 'simple',
+            seed=seed,
+            sections=[{'index': s.index, 'preset': s.preset, 'name': s.name,
+                       'tempo': s.tempo, 'bass': s.bass} for s in sections],
         )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(500, str(exc)) from exc
     finally:
-        path.unlink(missing_ok=True)
+        os.unlink(path)
+
+
+@app.post('/style')
+async def style_arrange(request: Request,
+                        style: str = Query('sakala'),
+                        strophes: int = Query(5, ge=1, le=5),
+                        coda: bool = Query(True),
+                        download: bool = Query(False)):
+    """
+    Стильова обробка: строфи різної фактури, хроматичні зв'язки, кода.
+
+    На відміну від /suite, де кожен розділ незалежний, тут форма
+    цілісна — регістр наростає від строфи до строфи, а зв'язки
+    щоразу повертають до домінанти.
+    """
+    path = await _read_source(request)
+    try:
+        try:
+            mod = styles.get(style)
+        except KeyError as exc:
+            raise HTTPException(404, str(exc))
+        ctx = _context(path)
+        score = mod.arrange_style(path, n_strophes=strophes,
+                                  with_coda=coda, verbose=False)
+        if download:
+            return _download(score, f'{style}.mxl')
+        return {'musicxml': to_musicxml_string(score),
+                'style': style,
+                'meter': ctx.ts.ratioString,
+                'key': str(ctx.key),
+                'sections': mod.describe(strophes, coda)}
+    finally:
+        os.unlink(path)
 
 
 @app.post('/midi')
-async def midi(request: Request):
+async def midi(request: Request,
+               seed: Optional[int] = Query(None),
+               preset: Optional[str] = Query(None)):
     """
-    Конвертує вже готову (аранжовану) партитуру MusicXML у MIDI.
+    Та сама музика у форматі MIDI.
 
-    Фронтенд передає сюди musicxml результату /suite або /arrange —
-    не оригінальну мелодію. Так MIDI завжди збігається з нотами на екрані
-    і не залежить від повторного генерування.
+    Потрібен для надійного відтворення в браузері: MIDI несе
+    program change 21 (GM Accordion), тож будь-який програвач із
+    GM-банком дасть саме баян. У MusicXML звук залежить від того,
+    як конкретний переглядач розпізнає <instrument-sound>.
     """
-    from music21 import converter as m21conv
-
-    path, filename = await _read_source(request)
-    stem = Path(filename).stem if filename else 'arranged'
-
-    out = tempfile.NamedTemporaryFile(suffix='.mid', delete=False)
-    out.close()
-    out_path = Path(out.name)
-
+    path = await _read_source(request)
     try:
-        score = m21conv.parse(str(path))
-        score.write('midi', fp=str(out_path))
-        return FileResponse(str(out_path), media_type='audio/midi',
-                            filename=stem + '.mid')
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(500, str(exc)) from exc
+        ctx = _context(path)
+        if preset and preset.startswith('style:'):
+            try:
+                mod = styles.get(preset.split(':', 1)[1])
+            except KeyError as exc:
+                raise HTTPException(404, str(exc))
+            score = mod.arrange_style(path, verbose=False)
+        elif preset:
+            presets = meters.presets(ctx.ts)
+            if preset not in presets:
+                raise HTTPException(404, f'Пресет {preset!r} недоступний для '
+                                         f'розміру {ctx.ts.ratioString}')
+            score = arrange(path, presets[preset], quiet=True)
+        else:
+            score = arrange_suite(path, seed=seed, verbose=False)
+        return StreamingResponse(
+            io.BytesIO(midi_bytes(score)),
+            media_type='audio/midi',
+            headers={'Content-Disposition': 'inline; filename="arrangement.mid"'},
+        )
     finally:
-        path.unlink(missing_ok=True)
+        os.unlink(path)
+
+
+@app.post('/merge')
+async def merge(request: Request, download: bool = Query(False)):
+    """Усі доступні пресети підряд — для порівняння на слух."""
+    path = await _read_source(request)
+    try:
+        ctx = _context(path)
+        presets = meters.presets(ctx.ts)
+        score = arrange_multi(path, presets=list(presets), preset_map=presets)
+        if download:
+            return _download(score, 'merge.mxl')
+        return {'musicxml': to_musicxml_string(score),
+                'meter': ctx.ts.ratioString,
+                'sections': [{'preset': k, 'name': c.name} for k, c in presets.items()]}
+    finally:
+        os.unlink(path)

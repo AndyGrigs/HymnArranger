@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 
 from hymnarranger import arrange, arrange_suite, arrange_multi, parse_input, save
+from hymnarranger import styles
 from hymnarranger import meters
 
 HERE = Path(__file__).resolve().parent
@@ -32,6 +33,11 @@ def main():
     ap.add_argument('--merge', action='store_true', help='усі пресети в одній партитурі')
     ap.add_argument('--suite', action='store_true', help="готова п'єса: тема + варіації")
     ap.add_argument('--seed', type=int, default=None, help='зерно для --suite')
+    ap.add_argument('--style', choices=list(styles.STYLES),
+                    help='стильова обробка: строфи, зв\'язки, кода')
+    ap.add_argument('--strophes', type=int, default=5,
+                    help='скільки строф у --style (1-5)')
+    ap.add_argument('--no-coda', action='store_true', help='без коди у --style')
     ap.add_argument('--list', action='store_true', help='показати пресети для цього файлу')
     a = ap.parse_args()
 
@@ -51,7 +57,13 @@ def main():
             print(f'  {k:18s} {c.name}')
         return
 
-    if a.suite:
+    if a.style:
+        mod = styles.get(a.style)
+        sc = mod.arrange_style(str(in_path), n_strophes=a.strophes,
+                               with_coda=not a.no_coda)
+        save(sc, out_path)
+        print(f'Обробка [{a.style}] -> {out_path}')
+    elif a.suite:
         save(arrange_suite(str(in_path), seed=a.seed), out_path)
         print(f'Сюїта -> {out_path}')
     elif a.merge:

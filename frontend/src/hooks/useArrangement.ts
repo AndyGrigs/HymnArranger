@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../api'
 import type { ScoreSource } from '../api'
 
-export type Mode = 'suite' | 'preset' | 'merge'
+export type Mode = 'suite' | 'preset' | 'merge' | 'style'
 
 /** Рядок у списку розділів під нотами. */
 export interface SectionRow {
@@ -23,6 +23,8 @@ interface Options {
   preset?: string
   seed?: number | null
   varyBass?: boolean
+  strophes?: number
+  coda?: boolean
 }
 
 export function useArrangement() {
@@ -65,6 +67,23 @@ export function useArrangement() {
             mode,
             params: { preset },
             sections: [{ label: data.name, detail: `${data.tempo} уд/хв` }],
+          }
+        } else if (mode === 'style') {
+          const params = {
+            style: 'sakala',
+            strophes: opts.strophes ?? 5,
+            coda: opts.coda ?? true,
+          }
+          const data = await api.style(source, params, controller.signal)
+          next = {
+            musicxml: data.musicxml,
+            title: `Стиль Сакали · ${data.key} · ${data.meter}`,
+            mode,
+            params,
+            sections: data.sections.map((s) => ({
+              label: `${s.index}. ${s.name}`,
+              detail: s.octave ? 'октавою вище' : '',
+            })),
           }
         } else {
           const data = await api.merge(source, controller.signal)

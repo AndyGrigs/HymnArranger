@@ -1,7 +1,7 @@
 const FEATURES = [
-  { emoji: '🎼', label: 'Автоматичне аранжування' },
-  { emoji: '🎵', label: 'Мелодія + акорди в партитурі' },
-  { emoji: '🪗', label: 'Зручно для баяна та акордеона' },
+  { emoji: '', label: 'Автоматичне аранжування' },
+  { emoji: '', label: 'Мелодія + акорди в партитурі' },
+  { emoji: '', label: 'Зручно для баяна та акордеона' },
 ]
 
 export function Hero() {
@@ -42,7 +42,7 @@ export function Hero() {
         <span className="absolute bottom-5 right-10 select-none text-2xl text-accent/12 rotate-20">♩</span>
         {/* accordion */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="select-none text-[8rem] drop-shadow-md">🪗</span>
+          <span className="select-none text-[10rem] drop-shadow-md">🪗</span>
         </div>
       </div>
     </div>

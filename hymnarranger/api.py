@@ -235,8 +235,9 @@ async def analyze(request: Request, seed: Optional[int] = Query(None)):
             warnings=ctx.warnings,
             presets=[PresetOut(id=k, name=c.name, tempo=c.tempo or 84, mode=c.mode)
                      for k, c in presets.items()],
-            suite=[{'index': s.index, 'preset': s.preset, 'name': s.name,
-                    'tempo': s.tempo, 'bass': s.bass} for s in sections],
+            suite=[{'index': i, 'preset': preset, 'name': cfg.name,
+                    'tempo': cfg.tempo, 'bass': cfg.lh_pattern}
+                   for i, (preset, cfg) in enumerate(sections)],
         )
     finally:
         os.unlink(path)
@@ -284,8 +285,9 @@ async def suite(request: Request,
             meter=ctx.ts.ratioString,
             meter_family='compound' if meters.is_compound(ctx.ts) else 'simple',
             seed=seed,
-            sections=[{'index': s.index, 'preset': s.preset, 'name': s.name,
-                       'tempo': s.tempo, 'bass': s.bass} for s in sections],
+            sections=[{'index': i, 'preset': preset, 'name': cfg.name,
+                       'tempo': cfg.tempo, 'bass': cfg.lh_pattern}
+                      for i, (preset, cfg) in enumerate(sections)],
         )
     finally:
         os.unlink(path)

@@ -33,8 +33,10 @@ export function FlatEmbedEditor({
 }: FlatEmbedEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const embedRef = useRef<Embed | null>(null)
+  const helpRef = useRef<HTMLDivElement>(null)
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showHelp, setShowHelp] = useState(false)
 
   // onEmbedChange тримаємо в ref, щоб інлайнова стрілка з App не була в deps.
   const notifyRef = useRef(onEmbedChange)
@@ -106,37 +108,83 @@ export function FlatEmbedEditor({
     embedRef.current?.focusScore().catch(() => {})
   }
 
+  useEffect(() => {
+    if (!showHelp) return
+    function onOutside(e: MouseEvent) {
+      if (helpRef.current && !helpRef.current.contains(e.target as Node)) {
+        setShowHelp(false)
+      }
+    }
+    function onEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setShowHelp(false)
+    }
+    document.addEventListener('mousedown', onOutside)
+    document.addEventListener('keydown', onEscape)
+    return () => {
+      document.removeEventListener('mousedown', onOutside)
+      document.removeEventListener('keydown', onEscape)
+    }
+  }, [showHelp])
+
   return (
     <div className="space-y-2">
       {/* Підказка по клавіатурі — за реальними шорткатами Flat */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-ink/10 bg-white px-3 py-2 text-xs text-ink/70">
-        <span className="font-semibold text-ink/50 uppercase tracking-wide">Як набирати ноти</span>
+      <div className="flex items-center gap-2 rounded-lg border border-ink/10 bg-white px-3 py-2 text-xs text-ink/70">
+        <div ref={helpRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setShowHelp((v) => !v)}
+            aria-expanded={showHelp}
+            aria-label="Як набирати ноти"
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-ink/20 text-ink/60 transition hover:bg-ink/5"
+          >
+            ℹ
+          </button>
 
-        <span className="flex items-center gap-1">
-          <span className="text-muted">Крок 1 — клікни в такт, щоб зʼявився курсор</span>
-        </span>
+          {showHelp && (
+            <div className="absolute left-0 top-full z-10 mt-2 w-80 space-y-2 rounded-lg border border-ink/10 bg-white p-3 text-xs text-ink/70 shadow-lg">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-ink/50 uppercase tracking-wide">
+                  Як набирати ноти
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowHelp(false)}
+                  aria-label="Закрити"
+                  className="text-ink/40 hover:text-ink/70"
+                >
+                  ✕
+                </button>
+              </div>
 
-        <span className="flex items-center gap-1.5">
-          <span className="text-muted">Крок 2 — тривалість</span>
-          {DURATIONS.map(({ key, label }) => (
-            <span key={key} className="flex items-center gap-0.5">
-              <kbd className="rounded border border-ink/20 bg-ink/5 px-1 font-mono">{key}</kbd>
-              <span className="text-ink/40">{label}</span>
-            </span>
-          ))}
-        </span>
+              <p className="text-muted">Крок 1 — клікни в такт, щоб зʼявився курсор</p>
 
-        <span className="flex items-center gap-1">
-          <span className="text-muted">Крок 3 — назва ноти</span>
-          <span className="font-mono font-bold tracking-widest text-accent">A B C D E F G</span>
-        </span>
+              <div>
+                <p className="text-muted">Крок 2 — тривалість</p>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {DURATIONS.map(({ key, label }) => (
+                    <span key={key} className="flex items-center gap-0.5">
+                      <kbd className="rounded border border-ink/20 bg-ink/5 px-1 font-mono">{key}</kbd>
+                      <span className="text-ink/40">{label}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
 
-        <span className="flex items-center gap-1">
-          <span className="text-muted">Повний список —</span>
-          <kbd className="rounded border border-ink/20 bg-ink/5 px-1 font-mono">Alt</kbd>
-          <span className="text-ink/40">+</span>
-          <kbd className="rounded border border-ink/20 bg-ink/5 px-1 font-mono">/</kbd>
-        </span>
+              <div className="flex items-center gap-1">
+                <span className="text-muted">Крок 3 — назва ноти</span>
+                <span className="font-mono font-bold tracking-widest text-accent">A B C D E F G</span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <span className="text-muted">Повний список —</span>
+                <kbd className="rounded border border-ink/20 bg-ink/5 px-1 font-mono">Alt</kbd>
+                <span className="text-ink/40">+</span>
+                <kbd className="rounded border border-ink/20 bg-ink/5 px-1 font-mono">/</kbd>
+              </div>
+            </div>
+          )}
+        </div>
 
         <button
           type="button"

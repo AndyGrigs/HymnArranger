@@ -68,7 +68,7 @@ def plan_suite(ts, plan=None, seed: Optional[int] = None,
 
 
 def arrange_suite(source, plan=None, seed: Optional[int] = None,
-                  vary_bass: bool = True) -> stream.Score:
+                  vary_bass: bool = True, verbose: bool = True) -> stream.Score:
     """
     Повна п'єса: тема + варіації, склеєні в одну партитуру.
 
@@ -76,17 +76,18 @@ def arrange_suite(source, plan=None, seed: Optional[int] = None,
     тридольний план з арпеджіо, у 2/4, 3/4 і 4/4 — звичайний.
     """
     ctx = parse_input(source)
-    for w in ctx.warnings:
-        print('  [!] ' + w)
+    if verbose:
+        for w in ctx.warnings:
+            print('  [!] ' + w)
 
     ts = ctx.ts
-    kind = 'тридольний' if meters.is_compound(ts) else 'дводольний'
-    print(f'  Розмір {ts.ratioString} -> {kind} план')
-
     steps = plan_suite(ts, plan, seed, vary_bass)
 
-    print('  Сюїта:')
-    for i, (_, cfg) in enumerate(steps, 1):
-        print(f'    {i}. {cfg.name} [бас: {cfg.lh_pattern}]')
+    if verbose:
+        kind = 'тридольний' if meters.is_compound(ts) else 'дводольний'
+        print(f'  Розмір {ts.ratioString} -> {kind} план')
+        print('  Сюїта:')
+        for i, (_, cfg) in enumerate(steps, 1):
+            print(f'    {i}. {cfg.name} [бас: {cfg.lh_pattern}]')
 
     return arrange_multi(source, cfgs=[cfg for _, cfg in steps])

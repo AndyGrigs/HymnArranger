@@ -14,6 +14,7 @@ import { MidiPlayer } from './components/MidiPlayer'
 import { DownloadBar } from './components/DownloadBar'
 import { Navbar } from './components/Navbar'
 import { Hero } from './components/Hero'
+import { HowItWorks } from './components/HowItWorks'
 import { Spinner } from './components/ui/Spinner'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { useAnalysis } from './hooks/useAnalysis'
@@ -32,6 +33,7 @@ async function ensureMidiPlayer() {
 
 type InputMode = 'upload' | 'compose'
 type ResultTab = 'score' | 'editor' | 'chords' | 'export'
+export type Page = 'home' | 'how'
 
 const INPUT_TABS: { id: InputMode; label: string }[] = [
   { id: 'upload',  label: 'Завантажити файл' },
@@ -55,6 +57,7 @@ export default function App() {
   const flatEmbedRef    = useRef<Embed | null>(null)
 
   // UI state
+  const [page,           setPage]           = useState<Page>('home')
   const [inputMode,      setInputMode]      = useState<InputMode>('upload')
   const [activeTab,      setActiveTab]      = useState<ResultTab>('score')
   const [fileSize,       setFileSize]       = useState<number | undefined>()
@@ -200,9 +203,18 @@ export default function App() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  if (page === 'how') {
+    return (
+      <div className="min-h-screen">
+        <Navbar activePage={page} onNavigate={setPage} />
+        <HowItWorks onStart={() => setPage('home')} />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
-      <Navbar />
+      <Navbar activePage={page} onNavigate={setPage} />
       <Hero />
 
       {/* ── Input card ──────────────────────────────────────────── */}

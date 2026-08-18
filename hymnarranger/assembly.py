@@ -226,6 +226,11 @@ def to_musicxml_string(sc: stream.Score) -> str:
         GeneralObjectExporter(sc).parse().decode('utf-8'))
 
 
+def midi_bytes(sc: stream.Score) -> bytes:
+    from music21.midi.translate import streamToMidiFile
+    return streamToMidiFile(sc).writestr()
+
+
 # =================================================================
 #  ЗБЕРЕЖЕННЯ З КОРЕКТНИМ ІНСТРУМЕНТОМ
 # =================================================================

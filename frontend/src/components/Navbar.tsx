@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Moon, Menu, X, User } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import type { Page } from '../App'
 
 const NAV_LINKS: { id: string; label: string; page?: Page }[] = [

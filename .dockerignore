@@ -1,0 +1,10 @@
+frontend/
+dataset/
+tests/
+input/
+output/
+helpers/
+.git/
+__pycache__/
+*.pyc
+.venv/

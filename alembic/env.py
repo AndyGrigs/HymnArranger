@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-load_dotenv(Path(__file__).resolve().parents[1] / "hymnarranger" / ".env")
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from hymnarranger.db.models import Base
 

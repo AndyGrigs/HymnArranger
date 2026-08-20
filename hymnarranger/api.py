@@ -28,6 +28,8 @@ from .assembly import (arrange, arrange_multi, save, to_musicxml_string,
                        midi_bytes)
 from .suite import arrange_suite, plan_suite
 from . import styles
+from hymnarranger.auth.routes import router as auth_router
+
 
 MAX_BYTES = 5 * 1024 * 1024
 ALLOWED_SUFFIX = ('.mxl', '.musicxml', '.xml')
@@ -46,6 +48,7 @@ app.add_middleware(
     allow_methods=['GET', 'POST'],
     allow_headers=['*'],
 )
+app.include_router(auth_router)
 
 
 # =================================================================

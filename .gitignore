@@ -8,3 +8,4 @@ out__*.musicxml
 .pytest_cache/
 .DS_Store
 frontend/.env
+.env

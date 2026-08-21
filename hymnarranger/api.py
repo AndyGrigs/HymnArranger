@@ -17,7 +17,7 @@ import os
 import tempfile
 from typing import Optional, List
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, HTMLResponse
 from pydantic import BaseModel, Field
@@ -29,6 +29,13 @@ from .assembly import (arrange, arrange_multi, save, to_musicxml_string,
 from .suite import arrange_suite, plan_suite
 from . import styles
 from hymnarranger.auth.routes import router as auth_router
+from sqlalchemy.orm import Session
+
+from hymnarranger.auth.dependencies import get_current_user_optional
+from hymnarranger.db.models import User
+from hymnarranger.db.session import get_db
+from hymnarranger.db.works import save_generated_work
+from hymnarranger.works.routes import router as works_router
 
 
 MAX_BYTES = 5 * 1024 * 1024
@@ -49,7 +56,7 @@ app.add_middleware(
     allow_headers=['*'],
 )
 app.include_router(auth_router)
-
+app.include_router(works_router)
 
 # =================================================================
 #  Схеми
@@ -249,7 +256,9 @@ async def analyze(request: Request, seed: Optional[int] = Query(None)):
 @app.post('/arrange')
 async def arrange_one(request: Request,
                       preset: str = Query('theme'),
-                      download: bool = Query(False)):
+                      download: bool = Query(False),
+                      db: Session = Depends(get_db),
+                      current_user: Optional[User] = Depends(get_current_user_optional)):
     """Один варіант аранжування."""
     path = await _read_source(request)
     try:
@@ -261,9 +270,19 @@ async def arrange_one(request: Request,
                      f'{ctx.ts.ratioString}. Доступні: {", ".join(presets)}')
         cfg = presets[preset]
         score = arrange(path, cfg, quiet=True)
+        musicxml_str = to_musicxml_string(score)
+
+        if current_user is not None:
+            save_generated_work(
+                db, current_user,
+                title=f'{cfg.name} ({preset})',
+                input_params={'preset': preset, 'meter': ctx.ts.ratioString},
+                musicxml_content=musicxml_str,
+            )
+
         if download:
             return _download(score, f'{preset}.mxl')
-        return ArrangeOut(musicxml=to_musicxml_string(score), preset=preset,
+        return ArrangeOut(musicxml=musicxml_str, preset=preset,
                           name=cfg.name, tempo=cfg.tempo or 84,
                           meter=ctx.ts.ratioString)
     finally:
@@ -274,17 +293,29 @@ async def arrange_one(request: Request,
 async def suite(request: Request,
                 seed: Optional[int] = Query(None),
                 vary_bass: bool = Query(True),
-                download: bool = Query(False)):
+                download: bool = Query(False),
+                db: Session = Depends(get_db),
+                current_user: Optional[User] = Depends(get_current_user_optional)):
     """Готова п'єса: тема + варіації в одній партитурі."""
     path = await _read_source(request)
     try:
         ctx = _context(path)
         sections = plan_suite(ctx.ts, seed=seed, vary_bass=vary_bass)
         score = arrange_suite(path, seed=seed, vary_bass=vary_bass, verbose=False)
+        musicxml_str = to_musicxml_string(score)
+
+        if current_user is not None:
+            save_generated_work(
+                db, current_user,
+                title=f'Suite ({ctx.ts.ratioString})',
+                input_params={'seed': seed, 'vary_bass': vary_bass, 'meter': ctx.ts.ratioString},
+                musicxml_content=musicxml_str,
+            )
+
         if download:
             return _download(score, 'suite.mxl')
         return SuiteOut(
-            musicxml=to_musicxml_string(score),
+            musicxml=musicxml_str,
             meter=ctx.ts.ratioString,
             meter_family='compound' if meters.is_compound(ctx.ts) else 'simple',
             seed=seed,

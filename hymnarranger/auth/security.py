@@ -1,6 +1,8 @@
 import os
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
@@ -37,3 +39,14 @@ def create_access_token(user_id: str) -> str:
 
 def decode_access_token(token: str) -> dict:
     return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+
+def hash_token(raw_token: str) -> str:
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+def generate_reset_token() -> tuple[str, str]:
+    """Повертає (raw_token, token_hash).
+    raw_token іде в лист користувачу й ніколи не зберігається.
+    token_hash зберігається в БД."""
+    raw_token = secrets.token_urlsafe(32)
+    return raw_token, hash_token(raw_token)

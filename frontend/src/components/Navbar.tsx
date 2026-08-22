@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Menu, Moon, User, X } from 'lucide-react'
+import { Menu, X, User, LogOut } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 
 const NAV_LINKS: { id: string; label: string; to?: string }[] = [
   { id: 'home', label: 'Головна', to: '/' },
@@ -12,6 +13,7 @@ const NAV_LINKS: { id: string; label: string; to?: string }[] = [
 export function Navbar() {
   const [open, setOpen] = useState(false)
   const location = useLocation()
+  const { user, logout } = useAuth()
 
   function close() {
     setOpen(false)
@@ -50,22 +52,30 @@ export function Navbar() {
         </ul>
 
         <div className="ml-auto flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="Тема"
-            className="rounded-full p-2 text-ink/50 transition hover:bg-ink/5 hover:text-ink"
-          >
-            <Moon className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            className="hidden items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5 sm:flex"
-          >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
-              <User className="h-3.5 w-3.5 text-ink/60" />
-            </span>
-            <span className="text-ink/65">Вихід</span>
-          </button>
+          {user ? (
+            <button
+              type="button"
+              onClick={logout}
+              title="Вийти"
+              className="hidden items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5 sm:flex"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
+                <User className="h-3.5 w-3.5 text-ink/60" />
+              </span>
+              <span className="text-ink/65">{user.email}</span>
+              <LogOut className="h-3.5 w-3.5 text-ink/40" />
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              className="hidden items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5 sm:flex"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
+                <User className="h-3.5 w-3.5 text-ink/60" />
+              </span>
+              <span className="text-ink/65">Увійти</span>
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -103,15 +113,29 @@ export function Navbar() {
             ))}
           </ul>
           <div className="mt-3 border-t border-ink/10 pt-3">
-            {/* <button
-              type="button"
-              className="flex items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
-                <User className="h-3.5 w-3.5 text-ink/60" />
-              </span>
-              <span className="text-ink/65">Вихід</span>
-            </button> */}
+            {user ? (
+              <button
+                type="button"
+                onClick={() => { logout(); close() }}
+                className="flex w-full items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
+                  <User className="h-3.5 w-3.5 text-ink/60" />
+                </span>
+                <span className="text-ink/65">{user.email} — вийти</span>
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                onClick={close}
+                className="flex items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
+                  <User className="h-3.5 w-3.5 text-ink/60" />
+                </span>
+                <span className="text-ink/65">Увійти</span>
+              </Link>
+            )}
           </div>
         </div>
       )}

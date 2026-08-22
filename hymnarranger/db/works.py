@@ -38,3 +38,11 @@ def get_user_work(db: Session, user: User, work_id: uuid.UUID) -> Optional[Gener
         .filter(GeneratedWork.user_id == user.id, GeneratedWork.id == work_id)
         .first()
     )
+
+def delete_user_work(db: Session, user: User, work_id: uuid.UUID) -> bool:
+    work = get_user_work(db, user, work_id)
+    if work is None:
+        return False
+    db.delete(work)
+    db.commit()
+    return True

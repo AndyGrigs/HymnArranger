@@ -1,5 +1,6 @@
 import { createContext, useEffect, useState, ReactNode } from 'react';
-import { getCurrentUser, loginUser, registerUser, User } from '../api/authApi';
+import { api } from '../api';
+import type { User } from '../api';
 
 const TOKEN_STORAGE_KEY = 'hymnarranger_token';
 
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return;
     }
-    getCurrentUser(token)
+    api.me(token)
       .then(setUser)
       .catch(() => {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -35,13 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   async function login(email: string, password: string) {
-    const { access_token } = await loginUser(email, password);
+    const { access_token } = await api.login(email, password);
     localStorage.setItem(TOKEN_STORAGE_KEY, access_token);
     setToken(access_token);
   }
 
   async function register(email: string, password: string) {
-    await registerUser(email, password);
+    await api.register(email, password);
     await login(email, password); // одразу логінимо після реєстрації
   }
 

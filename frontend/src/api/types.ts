@@ -117,3 +117,36 @@ export interface SuiteParams {
   vary_bass?: boolean
   [key: string]: unknown
 }
+
+/** GET /auth/me, POST /auth/register */
+export interface User {
+  id: string
+  email: string
+  is_active: boolean
+  is_verified: boolean
+  created_at: string
+}
+
+/** POST /auth/login */
+export interface AuthToken {
+  access_token: string
+  token_type: string
+}
+
+/** POST /auth/forgot-password, /auth/reset-password, DELETE /works/{id} */
+export interface MessageOut {
+  message: string
+}
+
+/** GET /works */
+export interface WorkSummary {
+  id: string
+  title: string
+  created_at: string
+  input_params: Record<string, unknown>
+}
+
+/** GET /works/{id} */
+export interface WorkDetail extends WorkSummary {
+  musicxml_content: string
+}

@@ -2,13 +2,18 @@ import { ApiError, extractDetail } from './errors'
 import type {
   AnalyzeOut,
   ArrangeOut,
+  AuthToken,
   HealthOut,
   MergeOut,
+  MessageOut,
   ScoreSource,
   StyleOut,
   StyleParams,
   SuiteOut,
   SuiteParams,
+  User,
+  WorkDetail,
+  WorkSummary,
 } from './types'
 
 const BASE = import.meta.env.VITE_API_BASE ?? '/api'
@@ -38,6 +43,33 @@ function buildQuery(params: Record<string, unknown> = {}): string {
   }
   const qs = search.toString()
   return qs ? `?${qs}` : ''
+}
+
+function authHeaders(token?: string): HeadersInit {
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+async function getJson<T>(path: string, token?: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${BASE}${path}`, { headers: authHeaders(token), signal })
+  if (!response.ok) await failure(response)
+  return (await response.json()) as T
+}
+
+async function sendJson<T>(
+  method: 'POST' | 'DELETE',
+  path: string,
+  body?: unknown,
+  token?: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(`${BASE}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal,
+  })
+  if (!response.ok) await failure(response)
+  return (await response.json()) as T
 }
 
 async function failure(response: Response): Promise<never> {
@@ -129,5 +161,41 @@ export const api = {
    */
   compress(source: ScoreSource, signal?: AbortSignal) {
     return postBlob('/compress', source, {}, signal)
+  },
+
+  // ── Авторизація ──────────────────────────────────────────────
+  register(email: string, password: string, signal?: AbortSignal) {
+    return sendJson<User>('POST', '/auth/register', { email, password }, undefined, signal)
+  },
+
+  login(email: string, password: string, signal?: AbortSignal) {
+    return sendJson<AuthToken>('POST', '/auth/login', { email, password }, undefined, signal)
+  },
+
+  me(token: string, signal?: AbortSignal) {
+    return getJson<User>('/auth/me', token, signal)
+  },
+
+  forgotPassword(email: string, signal?: AbortSignal) {
+    return sendJson<MessageOut>('POST', '/auth/forgot-password', { email }, undefined, signal)
+  },
+
+  resetPassword(token: string, newPassword: string, signal?: AbortSignal) {
+    return sendJson<MessageOut>(
+      'POST', '/auth/reset-password', { token, new_password: newPassword }, undefined, signal,
+    )
+  },
+
+  // ── Мої роботи ───────────────────────────────────────────────
+  listWorks(token: string, signal?: AbortSignal) {
+    return getJson<WorkSummary[]>('/works', token, signal)
+  },
+
+  getWork(token: string, workId: string, signal?: AbortSignal) {
+    return getJson<WorkDetail>(`/works/${workId}`, token, signal)
+  },
+
+  deleteWork(token: string, workId: string, signal?: AbortSignal) {
+    return sendJson<MessageOut>('DELETE', `/works/${workId}`, undefined, token, signal)
   },
 }

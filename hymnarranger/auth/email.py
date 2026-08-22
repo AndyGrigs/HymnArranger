@@ -1,10 +1,11 @@
 import os
+from pathlib import Path
 
 import sib_api_v3_sdk
 from dotenv import load_dotenv
 from sib_api_v3_sdk.rest import ApiException
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")

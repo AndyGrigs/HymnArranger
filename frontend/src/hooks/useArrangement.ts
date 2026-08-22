@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../api'
 import type { ScoreSource } from '../api'
+import { useAuth } from './useAuth'
 
 export type Mode = 'suite' | 'preset' | 'merge' | 'style'
 
@@ -28,16 +29,20 @@ interface Options {
 }
 
 export function useArrangement() {
+  const { token } = useAuth()
   const [result, setResult] = useState<Arrangement | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const tokenRef = useRef(token)
+  tokenRef.current = token
 
   const generate = useCallback(
     async (source: ScoreSource, mode: Mode, opts: Options = {}) => {
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller
+      const tok = tokenRef.current ?? undefined
 
       setLoading(true)
       setError(null)
@@ -47,7 +52,7 @@ export function useArrangement() {
 
         if (mode === 'suite') {
           const params = { seed: opts.seed ?? null, vary_bass: opts.varyBass ?? true }
-          const data = await api.suite(source, params, controller.signal)
+          const data = await api.suite(source, params, controller.signal, tok)
           next = {
             musicxml: data.musicxml,
             title: 'Тема з варіаціями',
@@ -60,7 +65,7 @@ export function useArrangement() {
           }
         } else if (mode === 'preset') {
           const preset = opts.preset!
-          const data = await api.arrange(source, preset, controller.signal)
+          const data = await api.arrange(source, preset, controller.signal, tok)
           next = {
             musicxml: data.musicxml,
             title: data.name,
@@ -74,7 +79,7 @@ export function useArrangement() {
             strophes: opts.strophes ?? 5,
             coda: opts.coda ?? true,
           }
-          const data = await api.style(source, params, controller.signal)
+          const data = await api.style(source, params, controller.signal, tok)
           next = {
             musicxml: data.musicxml,
             title: `Стиль Сакали · ${data.key} · ${data.meter}`,
@@ -86,7 +91,7 @@ export function useArrangement() {
             })),
           }
         } else {
-          const data = await api.merge(source, controller.signal)
+          const data = await api.merge(source, controller.signal, tok)
           next = {
             musicxml: data.musicxml,
             title: 'Порівняння пресетів',

@@ -88,12 +88,13 @@ async function postJson<T>(
   source: ScoreSource,
   params?: Record<string, unknown>,
   signal?: AbortSignal,
+  token?: string,
 ): Promise<T> {
   const { body, headers } = buildBody(source)
   const response = await fetch(`${BASE}${path}${buildQuery(params)}`, {
     method: 'POST',
     body,
-    headers,
+    headers: { ...(headers as Record<string, string> | undefined), ...authHeaders(token) },
     signal,
   })
   if (!response.ok) await failure(response)
@@ -131,23 +132,23 @@ export const api = {
   },
 
   /** Одне аранжування обраним пресетом. */
-  arrange(source: ScoreSource, preset: string, signal?: AbortSignal) {
-    return postJson<ArrangeOut>('/arrange', source, { preset }, signal)
+  arrange(source: ScoreSource, preset: string, signal?: AbortSignal, token?: string) {
+    return postJson<ArrangeOut>('/arrange', source, { preset }, signal, token)
   },
 
   /** Тема з варіаціями однією партитурою. */
-  suite(source: ScoreSource, params: SuiteParams = {}, signal?: AbortSignal) {
-    return postJson<SuiteOut>('/suite', source, params, signal)
+  suite(source: ScoreSource, params: SuiteParams = {}, signal?: AbortSignal, token?: string) {
+    return postJson<SuiteOut>('/suite', source, params, signal, token)
   },
 
   /** Усі доступні пресети підряд — для порівняння. */
-  merge(source: ScoreSource, signal?: AbortSignal) {
-    return postJson<MergeOut>('/merge', source, undefined, signal)
+  merge(source: ScoreSource, signal?: AbortSignal, token?: string) {
+    return postJson<MergeOut>('/merge', source, undefined, signal, token)
   },
 
   /** Стильова обробка: строфи різної фактури, зв'язки, кода. */
-  style(source: ScoreSource, params: StyleParams = {}, signal?: AbortSignal) {
-    return postJson<StyleOut>('/style', source, params, signal)
+  style(source: ScoreSource, params: StyleParams = {}, signal?: AbortSignal, token?: string) {
+    return postJson<StyleOut>('/style', source, params, signal, token)
   },
 
   /** Конвертує передану партитуру MusicXML у MIDI без повторного аранжування. */

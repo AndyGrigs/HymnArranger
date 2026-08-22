@@ -53,18 +53,26 @@ export function Navbar() {
 
         <div className="ml-auto flex items-center gap-2">
           {user ? (
-            <button
-              type="button"
-              onClick={logout}
-              title="Вийти"
-              className="hidden items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5 sm:flex"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
-                <User className="h-3.5 w-3.5 text-ink/60" />
-              </span>
-              <span className="text-ink/65">{user.email}</span>
-              <LogOut className="h-3.5 w-3.5 text-ink/40" />
-            </button>
+            <>
+              <Link
+                to="/works"
+                className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink/65 transition hover:bg-ink/5 hover:text-ink sm:flex"
+              >
+                Мої роботи
+              </Link>
+              <button
+                type="button"
+                onClick={logout}
+                title="Вийти"
+                className="hidden items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5 sm:flex"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
+                  <User className="h-3.5 w-3.5 text-ink/60" />
+                </span>
+                <span className="text-ink/65">{user.email}</span>
+                <LogOut className="h-3.5 w-3.5 text-ink/40" />
+              </button>
+            </>
           ) : (
             <Link
               to="/login"
@@ -112,18 +120,27 @@ export function Navbar() {
               </li>
             ))}
           </ul>
-          <div className="mt-3 border-t border-ink/10 pt-3">
+          <div className="mt-3 space-y-2 border-t border-ink/10 pt-3">
             {user ? (
-              <button
-                type="button"
-                onClick={() => { logout(); close() }}
-                className="flex w-full items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5"
-              >
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
-                  <User className="h-3.5 w-3.5 text-ink/60" />
-                </span>
-                <span className="text-ink/65">{user.email} — вийти</span>
-              </button>
+              <>
+                <Link
+                  to="/works"
+                  onClick={close}
+                  className="block rounded-lg px-3 py-2.5 text-sm font-medium text-ink/65 transition hover:bg-ink/5"
+                >
+                  Мої роботи
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => { logout(); close() }}
+                  className="flex w-full items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-3 py-1.5 text-sm transition hover:bg-ink/5"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10">
+                    <User className="h-3.5 w-3.5 text-ink/60" />
+                  </span>
+                  <span className="text-ink/65">{user.email} — вийти</span>
+                </button>
+              </>
             ) : (
               <Link
                 to="/login"

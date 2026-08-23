@@ -1,8 +1,12 @@
 import os
 from datetime import datetime, timedelta, timezone
 
-from hymnarranger.auth.email import send_password_reset_email
-from hymnarranger.auth.schemas import ForgotPasswordRequest, MessageResponse, ResetPasswordRequest
+from hymnarranger.auth.email import send_password_reset_email, send_verification_email
+
+from hymnarranger.auth.schemas import (
+    ForgotPasswordRequest, MessageResponse, ResetPasswordRequest, VerifyEmailRequest,
+)
+
 from hymnarranger.auth.security import generate_reset_token, hash_token
 from hymnarranger.db.models import PasswordResetToken
 
@@ -22,6 +26,9 @@ from hymnarranger.auth.security import create_access_token, verify_password
 router = APIRouter(prefix="/auth", tags=["auth"])
 RESET_TOKEN_EXPIRE_MINUTES = 30
 FRONTEND_RESET_URL = os.getenv("FRONTEND_RESET_URL", "http://localhost:5173/reset-password")
+
+VERIFICATION_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 години
+FRONTEND_VERIFY_URL = os.getenv("FRONTEND_VERIFY_URL", "http://localhost:5173/verify-email")
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)

@@ -33,3 +33,22 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
         _api_instance.send_transac_email(email)
     except ApiException as e:
         raise RuntimeError(f"Не вдалося надіслати лист: {e}")
+
+
+def send_verification_email(to_email: str, verify_link: str) -> None:
+    email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[{"email": to_email}],
+        sender={"email": SENDER_EMAIL, "name": "HymnArranger"},
+        subject="Підтвердження пошти HymnArranger",
+        html_content=f"""
+            <p>Дякуємо за реєстрацію в HymnArranger.</p>
+            <p><a href="{verify_link}">Натисніть тут, щоб підтвердити пошту</a></p>
+            <p>Посилання дійсне 24 години. Якщо це були не ви — просто проігноруйте цей лист.</p>
+        """,
+    )
+    try:
+        _api_instance.send_transac_email(email)
+    except ApiException as e:
+        raise RuntimeError(f"Не вдалося надіслати лист: {e}")
+
+

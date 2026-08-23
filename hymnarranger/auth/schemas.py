@@ -39,3 +39,6 @@ class ResetPasswordRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+class VerifyEmailRequest(BaseModel):
+    token: str

@@ -14,6 +14,7 @@ import type {
   User,
   WorkDetail,
   WorkSummary,
+  WorksPage,
 } from './types'
 
 const BASE = import.meta.env.VITE_API_BASE ?? '/api'
@@ -56,7 +57,7 @@ async function getJson<T>(path: string, token?: string, signal?: AbortSignal): P
 }
 
 async function sendJson<T>(
-  method: 'POST' | 'DELETE',
+  method: 'POST' | 'DELETE' | 'PATCH',
   path: string,
   body?: unknown,
   token?: string,
@@ -193,12 +194,25 @@ export const api = {
   },
 
   // ── Мої роботи ───────────────────────────────────────────────
-  listWorks(token: string, signal?: AbortSignal) {
-    return getJson<WorkSummary[]>('/works', token, signal)
+  listWorks(
+    token: string,
+    params: { search?: string; page?: number; pageSize?: number } = {},
+    signal?: AbortSignal,
+  ) {
+    const qs = buildQuery({
+      search: params.search || undefined,
+      page: params.page ?? 1,
+      page_size: params.pageSize ?? 10,
+    })
+    return getJson<WorksPage>(`/works${qs}`, token, signal)
   },
 
   getWork(token: string, workId: string, signal?: AbortSignal) {
     return getJson<WorkDetail>(`/works/${workId}`, token, signal)
+  },
+
+  renameWork(token: string, workId: string, title: string, signal?: AbortSignal) {
+    return sendJson<WorkSummary>('PATCH', `/works/${workId}`, { title }, token, signal)
   },
 
   deleteWork(token: string, workId: string, signal?: AbortSignal) {

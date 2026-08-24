@@ -7,6 +7,7 @@ import { RegisterPage } from './pages/RegisterPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { MyWorksPage } from './pages/MyWorksPage'
+import { ProtectedRoute } from './components/ProtectedRoute'
 import { Spinner } from './components/ui/Spinner'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 
@@ -32,7 +33,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/works" element={<MyWorksPage />} />
+        <Route path="/works" element={<ProtectedRoute><MyWorksPage /></ProtectedRoute>} />
       </Routes>
     </div>
   )

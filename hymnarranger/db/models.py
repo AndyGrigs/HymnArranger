@@ -56,6 +56,7 @@ class GeneratedWork(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     input_params: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     musicxml_content: Mapped[str] = mapped_column(Text, nullable=False)
+    source_abc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

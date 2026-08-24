@@ -155,7 +155,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=['*'],
     allow_credentials=False,
-    allow_methods=['GET', 'POST'],
+    allow_methods=['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allow_headers=['*'],
 )
 app.add_middleware(SecurityHeadersMiddleware)
@@ -390,11 +390,18 @@ async def arrange_one(request: Request,
         musicxml_str = to_musicxml_string(score)
 
         if current_user is not None:
+            _source_abc: Optional[str] = None
+            try:
+                import music21 as _m21
+                _source_abc = to_abc_string(_m21.converter.parse(path))
+            except Exception:
+                pass
             save_generated_work(
                 db, current_user,
                 title=f'{cfg.name} ({preset})',
                 input_params={'preset': preset, 'meter': ctx.ts.ratioString},
                 musicxml_content=musicxml_str,
+                source_abc=_source_abc,
             )
 
         if download:
@@ -429,11 +436,18 @@ async def suite(request: Request,
         musicxml_str = to_musicxml_string(score)
 
         if current_user is not None:
+            _source_abc_s: Optional[str] = None
+            try:
+                import music21 as _m21
+                _source_abc_s = to_abc_string(_m21.converter.parse(path))
+            except Exception:
+                pass
             save_generated_work(
                 db, current_user,
                 title=f'Suite ({ctx.ts.ratioString})',
                 input_params={'seed': seed, 'vary_bass': vary_bass, 'meter': ctx.ts.ratioString},
                 musicxml_content=musicxml_str,
+                source_abc=_source_abc_s,
             )
 
         if download:

@@ -153,4 +153,13 @@ export interface WorkSummary {
 /** GET /works/{id} */
 export interface WorkDetail extends WorkSummary {
   musicxml_content: string
+  source_abc: string | null
+}
+
+/** GET /works (paginated) */
+export interface WorksPage {
+  items: WorkSummary[]
+  total: number
+  page: number
+  page_size: number
 }

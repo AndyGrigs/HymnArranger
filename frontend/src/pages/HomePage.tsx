@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import {
   Music, Music2, Download, Edit3, Loader2,
   Play, Check,
@@ -7,27 +7,18 @@ import { FileDropzone } from '../components/FileDropzone'
 import { GeneratePanel } from '../components/GeneratePanel'
 import { AnalysisPanel } from '../components/AnalysisPanel'
 import { SectionList } from '../components/SectionList'
-
-const AbcPaper  = lazy(() => import('../components/AbcPaper').then(m => ({ default: m.AbcPaper })))
-const AbcEditor = lazy(() => import('../components/AbcEditor').then(m => ({ default: m.AbcEditor })))
 import { MidiPlayer } from '../components/MidiPlayer'
 import { DownloadBar } from '../components/DownloadBar'
 import { Hero } from '../components/Hero'
 import { Spinner } from '../components/ui/Spinner'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useArrangement, type Mode } from '../hooks/useArrangement'
-import { api } from '../api'
+import { useInputSource, type InputMode } from '../hooks/useInputSource'
+import { useMidiPreview } from '../hooks/useMidiPreview'
 
-const SOUNDFONT = 'https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus'
-let midiRegistered = false
-async function ensureMidiPlayer() {
-  if (!midiRegistered) {
-    await import('html-midi-player')
-    midiRegistered = true
-  }
-}
+const AbcPaper  = lazy(() => import('../components/AbcPaper').then(m => ({ default: m.AbcPaper })))
+const AbcEditor = lazy(() => import('../components/AbcEditor').then(m => ({ default: m.AbcEditor })))
 
-type InputMode = 'upload' | 'abc'
 type ResultTab = 'score' | 'editor' | 'chords' | 'export'
 
 const INPUT_TABS: { id: InputMode; label: string }[] = [
@@ -46,11 +37,17 @@ export function HomePage() {
   const analysis    = useAnalysis()
   const arrangement = useArrangement()
 
-  const abcGetRef = useRef<(() => string) | null>(null)
+  const { inputMode, setInputMode, fileSize, abcGetRef, handleFile, handleClear, handleAnalyzeFromAbc } =
+    useInputSource({
+      analysisLoad:     analysis.load,
+      arrangementClear: arrangement.clear,
+      analysisReset:    analysis.reset,
+    })
 
-  const [inputMode,  setInputMode]  = useState<InputMode>('upload')
-  const [activeTab,  setActiveTab]  = useState<ResultTab>('score')
-  const [fileSize,   setFileSize]   = useState<number | undefined>()
+  const { midiHostRef, midiLoading, midiReady, handlePlayMidi } =
+    useMidiPreview(arrangement.result?.musicxml)
+
+  const [activeTab, setActiveTab] = useState<ResultTab>('score')
 
   const [mode,     setMode]     = useState<Mode>('suite')
   const [preset,   setPreset]   = useState('')
@@ -58,11 +55,6 @@ export function HomePage() {
   const [varyBass, setVaryBass] = useState(true)
   const [strophes, setStrophes] = useState(5)
   const [coda,     setCoda]     = useState(true)
-
-  const midiHostRef = useRef<HTMLDivElement>(null)
-  const midiUrlRef  = useRef<string | null>(null)
-  const [midiLoading, setMidiLoading] = useState(false)
-  const [midiReady,   setMidiReady]   = useState(false)
 
   useEffect(() => {
     if (analysis.analysis?.presets.length) {
@@ -74,65 +66,9 @@ export function HomePage() {
     if (arrangement.result) setActiveTab('score')
   }, [arrangement.result])
 
-  useEffect(() => {
-    if (midiUrlRef.current) {
-      URL.revokeObjectURL(midiUrlRef.current)
-      midiUrlRef.current = null
-    }
-    if (midiHostRef.current) midiHostRef.current.innerHTML = ''
-    setMidiReady(false)
-    setMidiLoading(false)
-  }, [arrangement.result?.musicxml])
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
-  function handleFile(file: File) {
-    setFileSize(file.size)
-    arrangement.clear()
-    analysis.load(file, file.name)
-  }
-
-  function handleClear() {
-    setFileSize(undefined)
-    arrangement.clear()
-    analysis.reset()
-  }
-
-  async function handleAnalyzeFromAbc() {
-    const text = abcGetRef.current?.()
-    if (!text?.trim()) return
-    arrangement.clear()
-    analysis.load(new File([text], 'melody.abc', { type: 'text/plain' }), 'Мелодія з ABC-редактора')
-  }
-
   async function handleGenerate() {
     if (!analysis.source) return
     arrangement.generate(analysis.source, mode, { preset, seed, varyBass, strophes, coda })
-  }
-
-  async function handlePlayMidi() {
-    if (!arrangement.result || midiLoading || midiReady) return
-    setMidiLoading(true)
-    try {
-      await ensureMidiPlayer()
-      const blob = await api.midi({ musicxml: arrangement.result.musicxml })
-      if (midiUrlRef.current) URL.revokeObjectURL(midiUrlRef.current)
-      const url = URL.createObjectURL(blob)
-      midiUrlRef.current = url
-      const player = document.createElement('midi-player')
-      player.setAttribute('sound-font', SOUNDFONT)
-      player.setAttribute('src', url)
-      player.style.width = '100%'
-      if (midiHostRef.current) {
-        midiHostRef.current.innerHTML = ''
-        midiHostRef.current.appendChild(player)
-      }
-      setMidiReady(true)
-    } catch {
-      // user can fall back to Export tab
-    } finally {
-      setMidiLoading(false)
-    }
   }
 
   const displayTempo = (() => {

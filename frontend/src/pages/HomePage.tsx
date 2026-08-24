@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import {
   Music, Music2, Download, Edit3, Loader2,
   Play, Check,
@@ -13,6 +13,7 @@ import { Hero } from '../components/Hero'
 import { Spinner } from '../components/ui/Spinner'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useArrangement, type Mode } from '../hooks/useArrangement'
+import { useAuth } from '../hooks/useAuth'
 import { useInputSource, type InputMode } from '../hooks/useInputSource'
 import { useMidiPreview } from '../hooks/useMidiPreview'
 
@@ -34,6 +35,7 @@ const SIDEBAR_TABS: { id: ResultTab; Icon: React.FC<{ className?: string }>; lab
 ]
 
 export function HomePage() {
+  const { user } = useAuth()
   const analysis    = useAnalysis()
   const arrangement = useArrangement()
 
@@ -55,6 +57,10 @@ export function HomePage() {
   const [varyBass, setVaryBass] = useState(true)
   const [strophes, setStrophes] = useState(5)
   const [coda,     setCoda]     = useState(true)
+
+  const handleAbcReady = useCallback((getAbc: () => string) => {
+    abcGetRef.current = getAbc
+  }, [abcGetRef])
 
   useEffect(() => {
     if (analysis.analysis?.presets.length) {
@@ -125,7 +131,7 @@ export function HomePage() {
               {inputMode === 'abc' && (
                 <div className="space-y-3">
                   <Suspense fallback={<div className="flex justify-center py-8"><Spinner /></div>}>
-                    <AbcEditor onReady={(getAbc) => { abcGetRef.current = getAbc }} />
+                    <AbcEditor onReady={handleAbcReady} />
                   </Suspense>
                   <button
                     type="button"
@@ -162,6 +168,7 @@ export function HomePage() {
                     onCodaChange={setCoda}
                     onGenerate={handleGenerate}
                     loading={arrangement.loading}
+                    isLoggedIn={!!user}
                   />
                 ) : (
                   <button

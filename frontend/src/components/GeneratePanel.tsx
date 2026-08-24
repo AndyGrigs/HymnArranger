@@ -1,4 +1,5 @@
 import { Dice5, Wand2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import type { AnalyzeOut } from '../api'
 import type { Mode } from '../hooks/useArrangement'
 import { Card } from './ui/Card'
@@ -20,6 +21,7 @@ interface Props {
   onCodaChange: (value: boolean) => void
   onGenerate: () => void
   loading: boolean
+  isLoggedIn?: boolean
   /** Вбудований режим: рендерить вміст без Card-обгортки (для панелі Налаштування). */
   bare?: boolean
 }
@@ -32,7 +34,7 @@ const MODES: { id: Mode; label: string; hint: string }[] = [
 ]
 
 export function GeneratePanel(props: Props) {
-  const { analysis, mode, loading, bare } = props
+  const { analysis, mode, loading, bare, isLoggedIn } = props
 
   const body = (
     <>
@@ -158,6 +160,15 @@ export function GeneratePanel(props: Props) {
         {loading ? <Spinner /> : <Wand2 className="h-4 w-4" />}
         {loading ? 'Генерую…' : 'Аранжувати'}
       </button>
+
+      {!isLoggedIn && (
+        <p className="mt-2 text-center text-xs text-muted">
+          <Link to="/login" className="text-accent hover:underline">Увійди</Link>{' '}
+          або{' '}
+          <Link to="/register" className="text-accent hover:underline">зареєструйся</Link>
+          , щоб зберегти результат.
+        </p>
+      )}
     </>
   )
 

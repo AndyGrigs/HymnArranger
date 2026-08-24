@@ -12,6 +12,8 @@
 
 🌐 **Verfügbar in:** [🇬🇧 English](README.md) | [🇺🇦 Українська](README.ua.md)
 
+📚 **Dokumentation:** [ABC-Notationseditor — vollständige Anleitung](docs/abc-editor.md) (Ukrainisch)
+
 ---
 
 ## 📖 Projektbeschreibung
@@ -32,6 +34,7 @@ Separat wurde ein vollständig trainiertes neuronales Netz als **Forschungs-Base
 │  - Melodie hochladen oder im           │
 │    eingebetteten Flat.io-Editor        │
 │    eingeben                            │
+│  - ABC-Notationseditor mit Toolbar     │
 │  - Preset / Suite / "Alle"-Modus wählen│
 │  - Notenvorschau (OpenSheetMusicDisplay)│
 │  - MIDI-Wiedergabe (GM Accordion)      │
@@ -84,6 +87,7 @@ Separat wurde ein vollständig trainiertes neuronales Netz als **Forschungs-Base
 - 📚 "Alle Presets"-Modus: jede Textur nacheinander in einer Partitur, zum Vergleich
 - 👁️ Notenvorschau im Browser (OpenSheetMusicDisplay) und MIDI-Wiedergabe (GM-Accordion-Programm)
 - ✍️ Melodie direkt im Browser über einen eingebetteten Flat.io-Editor eingeben, oder Datei hochladen
+- 🎵 **ABC-Notationseditor** — Noten per Toolbar-Buttons eingeben (Notenwert, Oktave, Vorzeichen), Akkorde visuell zusammenstellen, Live-Vorschau per abcjs; `.abc`-Dateien vom Backend akzeptiert → [vollständige Anleitung](docs/abc-editor.md)
 - 📄 Ergebnis als MusicXML, komprimiertes .mxl oder MIDI herunterladen
 - 🧪 Dokumentierte neuronale Baseline zum methodischen Vergleich (siehe unten)
 
@@ -98,6 +102,7 @@ Separat wurde ein vollständig trainiertes neuronales Netz als **Forschungs-Base
 | **Notendarstellung** | OpenSheetMusicDisplay | MusicXML-Rendering im Browser |
 | **MIDI-Wiedergabe** | html-midi-player | Web-Component-Player, GM-Soundfont |
 | **Notation im Browser** | Flat.io Embed SDK | Melodie eingeben, ohne die App zu verlassen |
+| **ABC-Notationseditor** | abcjs 6 | Textbasierte Noteneingabe mit Live-Vorschau und Toolbar — kein Syntaxwissen erforderlich |
 | **Backend** | Python + FastAPI + Uvicorn | Dünne HTTP-Schicht über der Engine |
 | **Arrangement-Engine** | music21 | Parsing & Generierung symbolischer Musik |
 | **ML-Baseline (nur Forschung)** | PyTorch + Hugging Face Transformers | Encoder-Decoder Music Transformer mit RPR |
@@ -126,13 +131,20 @@ HymnArranger/
 │   │   ├── simple.py           # Presets für 2/4, 3/4, 4/4
 │   │   └── compound.py         # Presets für 6/8, 9/8, 12/8
 │   └── api.py                   # FastAPI-App (/health, /analyze, /arrange, /suite, /merge, /compress, /midi)
+│                                # Akzeptiert auch .abc-Dateien (music21 parst nativ)
 │
 ├── frontend/                    # React + Vite + TypeScript
 │   └── src/
 │       ├── api/                 # typisierter Client + Typen
-│       ├── components/          # FileDropzone, SheetViewer, ScoreEditor, ...
-│       ├── hooks/                 # useAnalysis, useArrangement
-│       └── lib/                    # Musik-Hilfsfunktionen, Download-Utilities
+│       ├── components/
+│       │   ├── AbcEditor.tsx    # ABC-Notationseditor (Toolbar + abcjs Live-Vorschau)
+│       │   ├── FlatEmbedEditor.tsx
+│       │   └── ...              # FileDropzone, SheetViewer, MidiPlayer, ...
+│       ├── hooks/               # useAnalysis, useArrangement
+│       └── lib/                 # Musik-Hilfsfunktionen, Download-Utilities
+│
+├── docs/
+│   └── abc-editor.md            # Vollständige Anleitung zum ABC-Notationseditor (Ukrainisch)
 │
 ├── dataset/                       # 732 Melodie/Arrangement-Paare (222 Lieder)
 │   ├── melody/
@@ -216,6 +228,7 @@ Der Datensatz stammt aus öffentlich zugänglicher christlicher Chormusik (**not
 - [x] FastAPI-Backend für die regelbasierte Engine
 - [x] Frontend mit React + Vite (Upload, Editor im Browser, Noten + MIDI, Download)
 - [x] API-Client des Frontends mit den Backend-Endpunkten abgeglichen
+- [x] ABC-Notationseditor mit Live-Vorschau, Noten-/Akkord-Toolbar und `.abc`-Backend-Unterstützung
 - [ ] Deployment (Docker-Konfiguration für Entwicklung vorhanden, Produktions-Deployment noch offen)
 - [ ] `LICENSE`-Datei passend zum obigen Badge ergänzen
 - [ ] Stilparameter für weitere Instrumente über Bajan hinaus (langfristig)

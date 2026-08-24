@@ -39,7 +39,7 @@ from hymnarranger.works.routes import router as works_router
 
 
 MAX_BYTES = 5 * 1024 * 1024
-ALLOWED_SUFFIX = ('.mxl', '.musicxml', '.xml')
+ALLOWED_SUFFIX = ('.mxl', '.musicxml', '.xml', '.abc')
 
 app = FastAPI(
     title='HymnArranger API',

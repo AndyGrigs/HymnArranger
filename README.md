@@ -12,6 +12,8 @@
 
 🌐 **Available in:** [🇺🇦 Українська](README.ua.md) | [🇩🇪 Deutsch](README.de.md)
 
+📚 **Docs:** [ABC Notation Editor — full guide](docs/abc-editor.md) (Ukrainian)
+
 ---
 
 ## 📖 About the Project
@@ -31,6 +33,7 @@ A separate, fully-trained neural network was also built and evaluated as a **res
 │      FRONTEND — React + Vite + TS      │
 │  - upload a melody or write it in a    │
 │    Flat.io embedded editor             │
+│  - ABC notation editor with toolbar    │
 │  - pick a preset / suite / "all" mode  │
 │  - sheet preview (OpenSheetMusicDisplay)│
 │  - MIDI playback (GM Accordion)        │
@@ -83,6 +86,7 @@ A separate, fully-trained neural network was also built and evaluated as a **res
 - 📚 "All presets" mode: every texture rendered back-to-back in one score, for comparison
 - 👁️ In-browser sheet preview (OpenSheetMusicDisplay) and MIDI playback (GM Accordion program)
 - ✍️ Write a melody directly in the browser via an embedded Flat.io editor, or upload a file
+- 🎵 **ABC notation editor** — enter notes with toolbar buttons (duration, octave, accidentals), build chords visually, live sheet preview via abcjs; `.abc` files accepted by the backend → [full guide](docs/abc-editor.md)
 - 📄 Download the result as MusicXML, compressed .mxl, or MIDI
 - 🧪 A documented neural-network baseline for methodological comparison (see below)
 
@@ -97,6 +101,7 @@ A separate, fully-trained neural network was also built and evaluated as a **res
 | **Sheet rendering** | OpenSheetMusicDisplay | MusicXML rendering in the browser |
 | **MIDI playback** | html-midi-player | Web-component player, GM soundfont |
 | **In-browser notation** | Flat.io Embed SDK | Write a melody without leaving the app |
+| **ABC notation editor** | abcjs 6 | Text-based music entry with live preview and toolbar — no syntax knowledge needed |
 | **Backend** | Python + FastAPI + Uvicorn | Thin HTTP layer over the engine |
 | **Arrangement engine** | music21 | Symbolic music parsing & generation |
 | **ML baseline (research only)** | PyTorch + Hugging Face Transformers | Encoder-decoder Music Transformer w/ RPR |
@@ -125,13 +130,20 @@ HymnArranger/
 │   │   ├── simple.py        # 2/4, 3/4, 4/4 presets
 │   │   └── compound.py      # 6/8, 9/8, 12/8 presets
 │   └── api.py                # FastAPI app (/health, /analyze, /arrange, /suite, /merge, /compress, /midi)
+│                             # Also accepts .abc files (music21 parses natively)
 │
 ├── frontend/                 # React + Vite + TypeScript app
 │   └── src/
 │       ├── api/              # typed client + types
-│       ├── components/       # FileDropzone, SheetViewer, ScoreEditor, ...
-│       ├── hooks/             # useAnalysis, useArrangement
-│       └── lib/                # music helpers, download utilities
+│       ├── components/
+│       │   ├── AbcEditor.tsx # ABC notation editor (toolbar + abcjs live preview)
+│       │   ├── FlatEmbedEditor.tsx
+│       │   └── ...           # FileDropzone, SheetViewer, MidiPlayer, ...
+│       ├── hooks/            # useAnalysis, useArrangement
+│       └── lib/              # music helpers, download utilities
+│
+├── docs/
+│   └── abc-editor.md         # Full ABC notation editor guide (Ukrainian)
 │
 ├── dataset/                    # 732 melody/arrangement MusicXML pairs (222 songs)
 │   ├── melody/
@@ -215,6 +227,7 @@ The dataset is collected from publicly available Christian choral music (**noty-
 - [x] FastAPI backend for the rule-based engine
 - [x] React + Vite frontend (upload, in-browser editor, sheet + MIDI, download)
 - [x] Frontend API client reconciled with backend endpoints
+- [x] ABC notation editor with live preview, note/chord toolbar, and `.abc` backend support
 - [ ] Deployment (Docker config drafted for dev, production deploy not yet set up)
 - [ ] Add a `LICENSE` file matching the badge above
 - [ ] Style parameters for instruments beyond bayan (long-term)

@@ -10,6 +10,7 @@ import { AnalysisPanel } from '../components/AnalysisPanel'
 import { SheetViewer } from '../components/SheetViewer'
 import { SectionList } from '../components/SectionList'
 import { FlatEmbedEditor } from '../components/FlatEmbedEditor'
+import { AbcEditor } from '../components/AbcEditor'
 import { MidiPlayer } from '../components/MidiPlayer'
 import { DownloadBar } from '../components/DownloadBar'
 import { Hero } from '../components/Hero'
@@ -29,12 +30,13 @@ async function ensureMidiPlayer() {
   }
 }
 
-type InputMode = 'upload' | 'compose'
+type InputMode = 'upload' | 'compose' | 'abc'
 type ResultTab = 'score' | 'editor' | 'chords' | 'export'
 
 const INPUT_TABS: { id: InputMode; label: string }[] = [
   { id: 'upload',  label: 'Завантажити файл' },
   { id: 'compose', label: 'Написати мелодію' },
+  { id: 'abc',     label: 'ABC-нотація' },
 ]
 
 const SIDEBAR_TABS: { id: ResultTab; Icon: React.FC<{ className?: string }>; label: string }[] = [
@@ -50,6 +52,7 @@ export function HomePage() {
 
   const composeEmbedRef = useRef<Embed | null>(null)
   const flatEmbedRef    = useRef<Embed | null>(null)
+  const abcGetRef       = useRef<(() => string) | null>(null)
 
   // UI state
   const [inputMode,      setInputMode]      = useState<InputMode>('upload')
@@ -120,6 +123,13 @@ export function HomePage() {
     setEditsApplied(false)
     arrangement.clear()
     analysis.reset()
+  }
+
+  async function handleAnalyzeFromAbc() {
+    const text = abcGetRef.current?.()
+    if (!text?.trim()) return
+    arrangement.clear()
+    analysis.load(new File([text], 'melody.abc', { type: 'text/plain' }), 'Мелодія з ABC-редактора')
   }
 
   async function handleAnalyzeFromCompose() {
@@ -219,7 +229,7 @@ export function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto]">
             {/* Left — input content */}
             <div className={`border-b border-ink/10 md:border-b-0 md:border-r ${
-              inputMode === 'compose' ? 'p-4' : 'p-6'
+              inputMode === 'compose' || inputMode === 'abc' ? 'p-4' : 'p-6'
             }`}>
 
               {/* File upload */}
@@ -231,6 +241,22 @@ export function HomePage() {
                   fileSize={fileSize}
                   loading={analysis.loading}
                 />
+              )}
+
+              {/* ABC notation editor */}
+              {inputMode === 'abc' && (
+                <div className="space-y-3">
+                  <AbcEditor onReady={(getAbc) => { abcGetRef.current = getAbc }} />
+                  <button
+                    type="button"
+                    onClick={handleAnalyzeFromAbc}
+                    disabled={analysis.loading}
+                    className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                  >
+                    {analysis.loading ? <Spinner /> : <Check className="h-4 w-4" />}
+                    {analysis.loading ? 'Аналізую…' : 'Взяти ноти з редактора'}
+                  </button>
+                </div>
               )}
 
               {/* Compose melody */}

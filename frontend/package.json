@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "abcjs": "^6.7.0",
     "flat-embed": "^2.12.1",
     "html-midi-player": "^1.6.0",
     "lucide-react": "^1.31.0",

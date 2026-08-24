@@ -13,6 +13,8 @@ export interface SectionRow {
 
 export interface Arrangement {
   musicxml: string
+  /** ABC-нотація для відображення через abcjs (може бути відсутня при помилці конвертації). */
+  abc?: string
   title: string
   mode: Mode
   sections: SectionRow[]
@@ -55,6 +57,7 @@ export function useArrangement() {
           const data = await api.suite(source, params, controller.signal, tok)
           next = {
             musicxml: data.musicxml,
+            abc: data.abc,
             title: 'Тема з варіаціями',
             mode,
             params,
@@ -68,6 +71,7 @@ export function useArrangement() {
           const data = await api.arrange(source, preset, controller.signal, tok)
           next = {
             musicxml: data.musicxml,
+            abc: data.abc,
             title: data.name,
             mode,
             params: { preset },
@@ -82,6 +86,7 @@ export function useArrangement() {
           const data = await api.style(source, params, controller.signal, tok)
           next = {
             musicxml: data.musicxml,
+            abc: data.abc,
             title: `Стиль Сакали · ${data.key} · ${data.meter}`,
             mode,
             params,
@@ -94,6 +99,7 @@ export function useArrangement() {
           const data = await api.merge(source, controller.signal, tok)
           next = {
             musicxml: data.musicxml,
+            abc: data.abc,
             title: 'Порівняння пресетів',
             mode,
             params: {},

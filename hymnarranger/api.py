@@ -12,6 +12,8 @@ MusicXML рядком (`embed.getMusicXML()`), сервер повертає т�
 
 from __future__ import annotations
 
+import asyncio
+import functools
 import io
 import os
 import tempfile
@@ -21,13 +23,19 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, HTMLResponse
 from pydantic import BaseModel, Field
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import meters
 from .parsing import parse_input
 from .assembly import (arrange, arrange_multi, save, to_musicxml_string,
-                       midi_bytes)
+                       to_abc_string, midi_bytes)
 from .suite import arrange_suite, plan_suite
 from . import styles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+from hymnarranger.auth.limiter import limiter
 from hymnarranger.auth.routes import router as auth_router
 from sqlalchemy.orm import Session
 
@@ -38,14 +46,109 @@ from hymnarranger.db.works import save_generated_work
 from hymnarranger.works.routes import router as works_router
 
 
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    if h.strip()
+]
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+        if request.url.scheme == 'https':
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        return response
+
+
 MAX_BYTES = 5 * 1024 * 1024
+MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024  # zip-bomb: ліміт на розпакований розмір
+MAX_MEASURES = 200          # понад 200 тактів → відмовляємо до аранжування
+ARRANGE_TIMEOUT = 45.0      # секунди на одну операцію аранжування
 ALLOWED_SUFFIX = ('.mxl', '.musicxml', '.xml', '.abc')
+
+
+def _validate_file(path: str) -> None:
+    """Захист від XML-бомб і zip-бомб перед передачею в music21.
+
+    .mxl — це ZIP: перевіряємо сумарний розпакований розмір і кожен
+    XML-файл усередині через defusedxml. Для чистого .musicxml/.xml
+    перевіряємо сам файл через defusedxml.
+
+    Ловимо лише security-специфічні виключення defusedxml (entity expansion,
+    DTD, external references). Звичайний ParseError пропускаємо — music21
+    сам підніме зрозумілу помилку і _context поверне 422.
+    """
+    import zipfile
+    from defusedxml import DefusedXmlException, DTDForbidden, EntitiesForbidden
+    import defusedxml.ElementTree as dET
+
+    _SECURITY_ERRORS = (DefusedXmlException, DTDForbidden, EntitiesForbidden)
+
+    def _check_xml(fileobj) -> None:
+        try:
+            dET.parse(fileobj)
+        except _SECURITY_ERRORS as exc:
+            raise HTTPException(400, f'Небезпечний XML: {exc}')
+        except Exception:
+            pass  # ParseError або не-XML — залишаємо music21
+
+    if path.lower().endswith('.mxl'):
+        if not zipfile.is_zipfile(path):
+            raise HTTPException(400, 'Файл .mxl не є коректним ZIP-архівом')
+        with zipfile.ZipFile(path, 'r') as zf:
+            total = sum(i.file_size for i in zf.infolist())
+            if total > MAX_UNCOMPRESSED_BYTES:
+                raise HTTPException(
+                    413,
+                    f'Розпакований вміст перевищує '
+                    f'{MAX_UNCOMPRESSED_BYTES // 1024 // 1024} МБ (zip-бомба?)',
+                )
+            for info in zf.infolist():
+                if info.filename.endswith(('.xml', '.musicxml')):
+                    with zf.open(info) as f:
+                        _check_xml(f)
+    else:
+        _check_xml(path)
+
+
+def _check_measures(ctx) -> None:
+    n = int(round((ctx.total_ql - ctx.pickup_ql) / ctx.ts.barDuration.quarterLength))
+    if n > MAX_MEASURES:
+        raise HTTPException(
+            400,
+            f'Партитура містить {n} тактів — максимум {MAX_MEASURES}. '
+            'Скоротіть або розбийте на частини.',
+        )
+
+
+async def _run_sync(fn, *, timeout: float = ARRANGE_TIMEOUT):
+    """Запускає синхронну CPU-важку функцію в thread pool з таймаутом."""
+    loop = asyncio.get_event_loop()
+    try:
+        return await asyncio.wait_for(
+            loop.run_in_executor(None, fn),
+            timeout=timeout,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            504,
+            f'Аранжування перевищило ліміт часу ({int(timeout)} с)',
+        )
+
 
 app = FastAPI(
     title='HymnArranger API',
     version='2.0',
     description='Генерує баянне аранжування з мелодії та акордових символів.',
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Фронтенд живе на іншому порту, тож без CORS браузер заблокує запити.
 app.add_middleware(
@@ -55,6 +158,8 @@ app.add_middleware(
     allow_methods=['GET', 'POST'],
     allow_headers=['*'],
 )
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 app.include_router(auth_router)
 app.include_router(works_router)
 
@@ -95,6 +200,7 @@ class AnalyzeOut(BaseModel):
 
 class ArrangeOut(BaseModel):
     musicxml: str
+    abc: Optional[str] = None
     preset: str
     name: str
     tempo: int
@@ -103,6 +209,7 @@ class ArrangeOut(BaseModel):
 
 class SuiteOut(BaseModel):
     musicxml: str
+    abc: Optional[str] = None
     meter: str
     meter_family: str
     seed: Optional[int]
@@ -127,6 +234,14 @@ async def _read_source(request: Request) -> str:
     Повертає шлях до тимчасового файлу — music21 читає з диска, а .mxl
     взагалі є zip-архівом, тож у пам'яті його не розібрати.
     """
+    cl_header = request.headers.get('content-length')
+    if cl_header is not None:
+        try:
+            if int(cl_header) > MAX_BYTES:
+                raise HTTPException(413, f'Файл більший за {MAX_BYTES // 1024 // 1024} МБ')
+        except ValueError:
+            pass  # некоректний заголовок — перевіримо після читання
+
     ctype = (request.headers.get('content-type') or '').lower()
     data, suffix = None, '.musicxml'
 
@@ -151,7 +266,7 @@ async def _read_source(request: Request) -> str:
                 raise HTTPException(400, 'Тіло не є коректним JSON')
             text = (payload or {}).get('musicxml')
             if not text or not str(text).strip():
-                raise HTTPException(400, 'У JSON немає непорожнього поля "musicxml"')
+                raise HTTPException(422, 'У JSON немає непорожнього поля "musicxml"')
             data = str(text).encode('utf-8')
         elif raw:
             data = raw
@@ -169,6 +284,7 @@ async def _read_source(request: Request) -> str:
 
 
 def _context(path: str):
+    _validate_file(path)
     try:
         return parse_input(path)
     except Exception as exc:
@@ -185,7 +301,7 @@ def _download(score, filename: str) -> StreamingResponse:
         os.unlink(tmp)
     return StreamingResponse(
         io.BytesIO(payload),
-        media_type='application/vnd.recordare.musicxml',
+        media_type='application/octet-stream',
         headers={'Content-Disposition': f'attachment; filename="{filename}"'},
     )
 
@@ -214,7 +330,7 @@ def demo_page():
 
 @app.get('/health')
 def health():
-    return {'status': 'ok', 'version': app.version}
+    return {'status': 'ok'}
 
 
 @app.post('/analyze', response_model=AnalyzeOut)
@@ -266,10 +382,11 @@ async def arrange_one(request: Request,
         presets = meters.presets(ctx.ts)
         if preset not in presets:
             raise HTTPException(
-                404, f'Пресет {preset!r} недоступний для розміру '
+                400, f'Пресет {preset!r} недоступний для розміру '
                      f'{ctx.ts.ratioString}. Доступні: {", ".join(presets)}')
         cfg = presets[preset]
-        score = arrange(path, cfg, quiet=True)
+        _check_measures(ctx)
+        score = await _run_sync(functools.partial(arrange, path, cfg, quiet=True))
         musicxml_str = to_musicxml_string(score)
 
         if current_user is not None:
@@ -282,7 +399,11 @@ async def arrange_one(request: Request,
 
         if download:
             return _download(score, f'{preset}.mxl')
-        return ArrangeOut(musicxml=musicxml_str, preset=preset,
+        try:
+            abc_str: Optional[str] = to_abc_string(score)
+        except Exception:
+            abc_str = None
+        return ArrangeOut(musicxml=musicxml_str, abc=abc_str, preset=preset,
                           name=cfg.name, tempo=cfg.tempo or 84,
                           meter=ctx.ts.ratioString)
     finally:
@@ -301,7 +422,10 @@ async def suite(request: Request,
     try:
         ctx = _context(path)
         sections = plan_suite(ctx.ts, seed=seed, vary_bass=vary_bass)
-        score = arrange_suite(path, seed=seed, vary_bass=vary_bass, verbose=False)
+        _check_measures(ctx)
+        score = await _run_sync(
+            functools.partial(arrange_suite, path, seed=seed, vary_bass=vary_bass, verbose=False)
+        )
         musicxml_str = to_musicxml_string(score)
 
         if current_user is not None:
@@ -314,8 +438,13 @@ async def suite(request: Request,
 
         if download:
             return _download(score, 'suite.mxl')
+        try:
+            abc_str_s: Optional[str] = to_abc_string(score)
+        except Exception:
+            abc_str_s = None
         return SuiteOut(
             musicxml=musicxml_str,
+            abc=abc_str_s,
             meter=ctx.ts.ratioString,
             meter_family='compound' if meters.is_compound(ctx.ts) else 'simple',
             seed=seed,
@@ -347,11 +476,19 @@ async def style_arrange(request: Request,
         except KeyError as exc:
             raise HTTPException(404, str(exc))
         ctx = _context(path)
-        score = mod.arrange_style(path, n_strophes=strophes,
-                                  with_coda=coda, verbose=False)
+        _check_measures(ctx)
+        score = await _run_sync(
+            functools.partial(mod.arrange_style, path, n_strophes=strophes,
+                              with_coda=coda, verbose=False)
+        )
         if download:
             return _download(score, f'{style}.mxl')
-        return {'musicxml': to_musicxml_string(score),
+        musicxml_s = to_musicxml_string(score)
+        try:
+            abc_s: Optional[str] = to_abc_string(score)
+        except Exception:
+            abc_s = None
+        return {'musicxml': musicxml_s, 'abc': abc_s,
                 'style': style,
                 'meter': ctx.ts.ratioString,
                 'key': str(ctx.key),
@@ -362,33 +499,48 @@ async def style_arrange(request: Request,
 
 @app.post('/midi')
 async def midi(request: Request,
+               raw: bool = Query(False),
                seed: Optional[int] = Query(None),
                preset: Optional[str] = Query(None)):
     """
     Та сама музика у форматі MIDI.
 
-    Потрібен для надійного відтворення в браузері: MIDI несе
-    program change 21 (GM Accordion), тож будь-який програвач із
-    GM-банком дасть саме баян. У MusicXML звук залежить від того,
-    як конкретний переглядач розпізнає <instrument-sound>.
+    ?raw=true — конвертує переданий MusicXML напряму, без аранжування.
+    Використовується коли клієнт вже має готову партитуру в пам'яті.
+    Без raw= — аранжує мелодію (suite або обраний preset).
     """
+    import music21
     path = await _read_source(request)
     try:
-        ctx = _context(path)
-        if preset and preset.startswith('style:'):
+        if raw:
+            _validate_file(path)
+            score = music21.converter.parse(path)
+        elif preset and preset.startswith('style:'):
             try:
                 mod = styles.get(preset.split(':', 1)[1])
             except KeyError as exc:
                 raise HTTPException(404, str(exc))
-            score = mod.arrange_style(path, verbose=False)
+            ctx = _context(path)
+            _check_measures(ctx)
+            score = await _run_sync(
+                functools.partial(mod.arrange_style, path, verbose=False)
+            )
         elif preset:
+            ctx = _context(path)
             presets = meters.presets(ctx.ts)
             if preset not in presets:
                 raise HTTPException(404, f'Пресет {preset!r} недоступний для '
                                          f'розміру {ctx.ts.ratioString}')
-            score = arrange(path, presets[preset], quiet=True)
+            _check_measures(ctx)
+            score = await _run_sync(
+                functools.partial(arrange, path, presets[preset], quiet=True)
+            )
         else:
-            score = arrange_suite(path, seed=seed, verbose=False)
+            ctx = _context(path)
+            _check_measures(ctx)
+            score = await _run_sync(
+                functools.partial(arrange_suite, path, seed=seed, verbose=False)
+            )
         return StreamingResponse(
             io.BytesIO(midi_bytes(score)),
             media_type='audio/midi',
@@ -405,11 +557,61 @@ async def merge(request: Request, download: bool = Query(False)):
     try:
         ctx = _context(path)
         presets = meters.presets(ctx.ts)
-        score = arrange_multi(path, presets=list(presets), preset_map=presets)
+        _check_measures(ctx)
+        score = await _run_sync(
+            functools.partial(arrange_multi, path, presets=list(presets), preset_map=presets)
+        )
         if download:
             return _download(score, 'merge.mxl')
-        return {'musicxml': to_musicxml_string(score),
+        musicxml_m = to_musicxml_string(score)
+        try:
+            abc_m: Optional[str] = to_abc_string(score)
+        except Exception:
+            abc_m = None
+        return {'musicxml': musicxml_m, 'abc': abc_m,
                 'meter': ctx.ts.ratioString,
                 'sections': [{'preset': k, 'name': c.name} for k, c in presets.items()]}
+    finally:
+        os.unlink(path)
+
+
+@app.post('/compress')
+async def compress_mxl(request: Request):
+    """Стискає MusicXML у формат .mxl (ZIP) без повторного аранжування."""
+    import shutil
+    import music21
+    path = await _read_source(request)
+    try:
+        _validate_file(path)
+        score = music21.converter.parse(path)
+        tmpdir = tempfile.mkdtemp()
+        try:
+            tmp = os.path.join(tmpdir, 'score.mxl')
+            save(score, tmp)
+            payload = open(tmp, 'rb').read()
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+        return StreamingResponse(
+            io.BytesIO(payload),
+            media_type='application/octet-stream',
+            headers={'Content-Disposition': 'attachment; filename="score.mxl"'},
+        )
+    finally:
+        os.unlink(path)
+
+
+@app.post('/convert/abc')
+async def convert_to_abc(request: Request):
+    """Конвертує будь-який підтримуваний формат (MusicXML, .mxl, .abc) у ABC-нотацію."""
+    import music21
+    path = await _read_source(request)
+    try:
+        _validate_file(path)
+        sc = await _run_sync(lambda: music21.converter.parse(path), timeout=15.0)
+        return {'abc': to_abc_string(sc)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(422, f'Не вдалося конвертувати: {exc}')
     finally:
         os.unlink(path)

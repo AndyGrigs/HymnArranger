@@ -1,24 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type Embed from 'flat-embed'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import {
   Music, Music2, Download, Edit3, Loader2,
-  Play, Check, RefreshCw,
+  Play, Check,
 } from 'lucide-react'
 import { FileDropzone } from '../components/FileDropzone'
 import { GeneratePanel } from '../components/GeneratePanel'
 import { AnalysisPanel } from '../components/AnalysisPanel'
-import { SheetViewer } from '../components/SheetViewer'
 import { SectionList } from '../components/SectionList'
-import { FlatEmbedEditor } from '../components/FlatEmbedEditor'
-import { AbcEditor } from '../components/AbcEditor'
+
+const AbcPaper  = lazy(() => import('../components/AbcPaper').then(m => ({ default: m.AbcPaper })))
+const AbcEditor = lazy(() => import('../components/AbcEditor').then(m => ({ default: m.AbcEditor })))
 import { MidiPlayer } from '../components/MidiPlayer'
 import { DownloadBar } from '../components/DownloadBar'
 import { Hero } from '../components/Hero'
 import { Spinner } from '../components/ui/Spinner'
-import { ErrorBoundary } from '../components/ui/ErrorBoundary'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useArrangement, type Mode } from '../hooks/useArrangement'
-import { blankMusicXML, KEY_OPTIONS, METER_OPTIONS } from '../lib/blankScore'
 import { api } from '../api'
 
 const SOUNDFONT = 'https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus'
@@ -30,13 +27,12 @@ async function ensureMidiPlayer() {
   }
 }
 
-type InputMode = 'upload' | 'compose' | 'abc'
+type InputMode = 'upload' | 'abc'
 type ResultTab = 'score' | 'editor' | 'chords' | 'export'
 
 const INPUT_TABS: { id: InputMode; label: string }[] = [
-  { id: 'upload',  label: 'Завантажити файл' },
-  { id: 'compose', label: 'Написати мелодію' },
-  { id: 'abc',     label: 'ABC-нотація' },
+  { id: 'upload', label: 'Завантажити файл' },
+  { id: 'abc',    label: 'ABC-нотація' },
 ]
 
 const SIDEBAR_TABS: { id: ResultTab; Icon: React.FC<{ className?: string }>; label: string }[] = [
@@ -50,26 +46,11 @@ export function HomePage() {
   const analysis    = useAnalysis()
   const arrangement = useArrangement()
 
-  const composeEmbedRef = useRef<Embed | null>(null)
-  const flatEmbedRef    = useRef<Embed | null>(null)
-  const abcGetRef       = useRef<(() => string) | null>(null)
+  const abcGetRef = useRef<(() => string) | null>(null)
 
-  // UI state
-  const [inputMode,      setInputMode]      = useState<InputMode>('upload')
-  const [activeTab,      setActiveTab]      = useState<ResultTab>('score')
-  const [fileSize,       setFileSize]       = useState<number | undefined>()
-  const [composeLoading, setComposeLoading] = useState(false)
-  const [applyingEdits,  setApplyingEdits]  = useState(false)
-  const [editsApplied,   setEditsApplied]   = useState(false)
-
-  // Settings (meter/key sync with analysis result when available)
-  const [editorMeter,  setEditorMeter]  = useState('4/4')
-  const [editorFifths, setEditorFifths] = useState(0)
-
-  const blankXml = useMemo(
-    () => blankMusicXML({ meter: editorMeter, fifths: editorFifths, measures: 16 }),
-    [editorMeter, editorFifths],
-  )
+  const [inputMode,  setInputMode]  = useState<InputMode>('upload')
+  const [activeTab,  setActiveTab]  = useState<ResultTab>('score')
+  const [fileSize,   setFileSize]   = useState<number | undefined>()
 
   const [mode,     setMode]     = useState<Mode>('suite')
   const [preset,   setPreset]   = useState('')
@@ -82,12 +63,6 @@ export function HomePage() {
   const midiUrlRef  = useRef<string | null>(null)
   const [midiLoading, setMidiLoading] = useState(false)
   const [midiReady,   setMidiReady]   = useState(false)
-
-  useEffect(() => {
-    if (!analysis.analysis) return
-    setEditorMeter(analysis.analysis.meter)
-    setEditorFifths(analysis.analysis.sharps)
-  }, [analysis.analysis])
 
   useEffect(() => {
     if (analysis.analysis?.presets.length) {
@@ -113,14 +88,12 @@ export function HomePage() {
 
   function handleFile(file: File) {
     setFileSize(file.size)
-    setEditsApplied(false)
     arrangement.clear()
     analysis.load(file, file.name)
   }
 
   function handleClear() {
     setFileSize(undefined)
-    setEditsApplied(false)
     arrangement.clear()
     analysis.reset()
   }
@@ -132,39 +105,8 @@ export function HomePage() {
     analysis.load(new File([text], 'melody.abc', { type: 'text/plain' }), 'Мелодія з ABC-редактора')
   }
 
-  async function handleAnalyzeFromCompose() {
-    const embed = composeEmbedRef.current
-    if (!embed) return
-    setComposeLoading(true)
-    try {
-      const xml = await embed.getMusicXML()
-      if (typeof xml === 'string') {
-        arrangement.clear()
-        analysis.load({ musicxml: xml }, 'Мелодія з редактора')
-      }
-    } finally {
-      setComposeLoading(false)
-    }
-  }
-
-  async function handleApplyEditorChanges() {
-    const embed = flatEmbedRef.current
-    if (!embed) return
-    setApplyingEdits(true)
-    try {
-      const xml = await embed.getMusicXML()
-      if (typeof xml === 'string') {
-        arrangement.updateMusicXml(xml)
-        setEditsApplied(true)
-      }
-    } finally {
-      setApplyingEdits(false)
-    }
-  }
-
   async function handleGenerate() {
     if (!analysis.source) return
-    setEditsApplied(false)
     arrangement.generate(analysis.source, mode, { preset, seed, varyBass, strophes, coda })
   }
 
@@ -229,7 +171,7 @@ export function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto]">
             {/* Left — input content */}
             <div className={`border-b border-ink/10 md:border-b-0 md:border-r ${
-              inputMode === 'compose' || inputMode === 'abc' ? 'p-4' : 'p-6'
+              inputMode === 'abc' ? 'p-4' : 'p-6'
             }`}>
 
               {/* File upload */}
@@ -246,7 +188,9 @@ export function HomePage() {
               {/* ABC notation editor */}
               {inputMode === 'abc' && (
                 <div className="space-y-3">
-                  <AbcEditor onReady={(getAbc) => { abcGetRef.current = getAbc }} />
+                  <Suspense fallback={<div className="flex justify-center py-8"><Spinner /></div>}>
+                    <AbcEditor onReady={(getAbc) => { abcGetRef.current = getAbc }} />
+                  </Suspense>
                   <button
                     type="button"
                     onClick={handleAnalyzeFromAbc}
@@ -258,94 +202,36 @@ export function HomePage() {
                   </button>
                 </div>
               )}
-
-              {/* Compose melody */}
-              {inputMode === 'compose' && (
-                <div className="space-y-3">
-                  <ErrorBoundary label="Редактор" resetKey={blankXml}>
-                    <FlatEmbedEditor
-                      key={`compose-${editorMeter}-${editorFifths}`}
-                      musicXml={blankXml}
-                      onEmbedChange={(embed) => { composeEmbedRef.current = embed }}
-                      height="480px"
-                    />
-                  </ErrorBoundary>
-                  <button
-                    type="button"
-                    onClick={handleAnalyzeFromCompose}
-                    disabled={composeLoading || analysis.loading}
-                    className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-                  >
-                    {composeLoading || analysis.loading
-                      ? <Spinner />
-                      : <Check className="h-4 w-4" />
-                    }
-                    {composeLoading || analysis.loading
-                      ? 'Аналізую…'
-                      : 'Взяти ноти з редактора'
-                    }
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Right — Settings */}
             <div className="w-full p-5 sm:p-6 md:w-72 md:shrink-0">
               <h3 className="font-semibold text-accent">Налаштування</h3>
-              <div className="mt-4 space-y-4">
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted">Розмір</span>
-                  <select
-                    value={editorMeter}
-                    onChange={(e) => setEditorMeter(e.target.value)}
-                    className="rounded-lg border border-ink/15 bg-white px-3 py-1.5 text-sm"
-                  >
-                    {METER_OPTIONS.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-start justify-between gap-3">
-                  <span className="mt-1.5 shrink-0 text-sm text-muted">Тональність</span>
-                  <select
-                    value={editorFifths}
-                    onChange={(e) => setEditorFifths(Number(e.target.value))}
-                    className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-1.5 text-sm"
-                  >
-                    {KEY_OPTIONS.map((k) => (
-                      <option key={k.fifths} value={k.fifths}>{k.label}</option>
-                    ))}
-                  </select>
-                </div>
-
+              <div className="mt-4">
                 {analysis.analysis ? (
-                  <div className="mt-2 border-t border-ink/10 pt-4">
-                    <GeneratePanel
-                      bare
-                      analysis={analysis.analysis}
-                      mode={mode}
-                      onModeChange={setMode}
-                      preset={preset}
-                      onPresetChange={setPreset}
-                      seed={seed}
-                      onSeedChange={setSeed}
-                      varyBass={varyBass}
-                      onVaryBassChange={setVaryBass}
-                      strophes={strophes}
-                      onStrophesChange={setStrophes}
-                      coda={coda}
-                      onCodaChange={setCoda}
-                      onGenerate={handleGenerate}
-                      loading={arrangement.loading}
-                    />
-                  </div>
+                  <GeneratePanel
+                    bare
+                    analysis={analysis.analysis}
+                    mode={mode}
+                    onModeChange={setMode}
+                    preset={preset}
+                    onPresetChange={setPreset}
+                    seed={seed}
+                    onSeedChange={setSeed}
+                    varyBass={varyBass}
+                    onVaryBassChange={setVaryBass}
+                    strophes={strophes}
+                    onStrophesChange={setStrophes}
+                    coda={coda}
+                    onCodaChange={setCoda}
+                    onGenerate={handleGenerate}
+                    loading={arrangement.loading}
+                  />
                 ) : (
                   <button
                     type="button"
                     disabled
-                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-semibold text-white opacity-40"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-semibold text-white opacity-40"
                   >
                     <Music className="h-4 w-4" />
                     Створити партитуру
@@ -451,9 +337,15 @@ export function HomePage() {
                     </div>
 
                     <div className="flex-1 p-4">
-                      <ErrorBoundary label="Партитура" resetKey={arrangement.result.musicxml}>
-                        <SheetViewer musicxml={arrangement.result.musicxml} />
-                      </ErrorBoundary>
+                      {arrangement.result.abc ? (
+                        <Suspense fallback={<div className="flex justify-center py-12"><Spinner /></div>}>
+                          <AbcPaper abc={arrangement.result.abc} />
+                        </Suspense>
+                      ) : (
+                        <p className="text-sm text-muted">
+                          ABC-нотація недоступна для цього аранжування.
+                        </p>
+                      )}
                     </div>
                   </>
                 )}
@@ -461,38 +353,18 @@ export function HomePage() {
                 {/* ─ Редактор ─ */}
                 {activeTab === 'editor' && (
                   <div className="flex-1 p-5">
-                    <div className="mb-3 flex flex-wrap items-center gap-3">
+                    {arrangement.result.abc ? (
+                      <Suspense fallback={<div className="flex justify-center py-12"><Spinner /></div>}>
+                        <AbcEditor
+                          key={arrangement.result.abc}
+                          initialAbc={arrangement.result.abc}
+                        />
+                      </Suspense>
+                    ) : (
                       <p className="text-sm text-muted">
-                        Редагуй аранжування прямо тут, тоді натисни «Застосувати зміни» —
-                        інакше партитура, MIDI й завантаження й далі використовуватимуть старий варіант.
+                        ABC-нотація недоступна для цього аранжування.
                       </p>
-                      <button
-                        type="button"
-                        onClick={handleApplyEditorChanges}
-                        disabled={applyingEdits}
-                        className="ml-auto flex shrink-0 items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-                      >
-                        {applyingEdits
-                          ? <Spinner />
-                          : editsApplied
-                            ? <Check className="h-4 w-4" />
-                            : <RefreshCw className="h-4 w-4" />
-                        }
-                        {applyingEdits
-                          ? 'Застосовую…'
-                          : editsApplied
-                            ? 'Застосовано'
-                            : 'Застосувати зміни'
-                        }
-                      </button>
-                    </div>
-                    <ErrorBoundary label="Редактор" resetKey={arrangement.result.musicxml}>
-                      <FlatEmbedEditor
-                        musicXml={arrangement.result.musicxml}
-                        onEmbedChange={(embed) => { flatEmbedRef.current = embed }}
-                        height="600px"
-                      />
-                    </ErrorBoundary>
+                    )}
                   </div>
                 )}
 

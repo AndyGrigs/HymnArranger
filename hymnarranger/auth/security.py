@@ -23,6 +23,11 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
+# Використовується в login щоб bcrypt завжди виконувався незалежно від того,
+# чи існує акаунт — інакше різниця в часі відповіді дозволяє enumerate users.
+_DUMMY_HASH: str = hash_password("__dummy_sentinel__")
+
+
 def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 

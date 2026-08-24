@@ -4,8 +4,25 @@ import { Trash2, Eye, X, Music } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { api, ApiError, type WorkSummary, type WorkDetail } from '../api'
 import { Spinner } from '../components/ui/Spinner'
-import { ErrorBoundary } from '../components/ui/ErrorBoundary'
-import { SheetViewer } from '../components/SheetViewer'
+import { AbcPaper } from '../components/AbcPaper'
+
+/** Converts a saved work's MusicXML to ABC on first open, then displays it. */
+function WorkViewer({ musicxml }: { musicxml: string }) {
+  const [abc, setAbc] = useState<string | null>(null)
+  const [err, setErr] = useState(false)
+
+  useEffect(() => {
+    setAbc(null)
+    setErr(false)
+    api.convertToAbc({ musicxml })
+      .then((r) => setAbc(r.abc))
+      .catch(() => setErr(true))
+  }, [musicxml])
+
+  if (err) return <p className="text-sm text-muted">Не вдалося відобразити партитуру.</p>
+  if (abc === null) return <div className="flex justify-center py-12"><Spinner /></div>
+  return <AbcPaper abc={abc} />
+}
 
 export function MyWorksPage() {
   const { user, token, isLoading: authLoading } = useAuth()
@@ -139,9 +156,7 @@ export function MyWorksPage() {
               {selectedLoading || !selected ? (
                 <div className="flex justify-center py-12"><Spinner /></div>
               ) : (
-                <ErrorBoundary label="Партитура" resetKey={selected.musicxml_content}>
-                  <SheetViewer musicxml={selected.musicxml_content} />
-                </ErrorBoundary>
+                <WorkViewer musicxml={selected.musicxml_content} />
               )}
             </div>
           </div>

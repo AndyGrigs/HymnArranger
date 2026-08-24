@@ -151,9 +151,14 @@ export const api = {
     return postJson<StyleOut>('/style', source, params, signal, token)
   },
 
+  /** Конвертує будь-який формат партитури в ABC-нотацію. */
+  convertToAbc(source: ScoreSource, signal?: AbortSignal) {
+    return postJson<{ abc: string }>('/convert/abc', source, undefined, signal)
+  },
+
   /** Конвертує передану партитуру MusicXML у MIDI без повторного аранжування. */
   midi(source: ScoreSource, signal?: AbortSignal) {
-    return postBlob('/midi', source, {}, signal)
+    return postBlob('/midi', source, { raw: true }, signal)
   },
 
   /**
@@ -166,7 +171,7 @@ export const api = {
 
   // ── Авторизація ──────────────────────────────────────────────
   register(email: string, password: string, signal?: AbortSignal) {
-    return sendJson<User>('POST', '/auth/register', { email, password }, undefined, signal)
+    return sendJson<MessageOut>('POST', '/auth/register', { email, password }, undefined, signal)
   },
 
   login(email: string, password: string, signal?: AbortSignal) {

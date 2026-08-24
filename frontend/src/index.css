@@ -17,9 +17,3 @@ body {
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
 }
-
-/* OSMD малює SVG у контейнер; без цього ноти вилазять за межі картки */
-.osmd-container svg {
-  max-width: 100%;
-  height: auto;
-}

@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 import jwt
 from typing import Optional
@@ -11,6 +12,21 @@ from hymnarranger.db.models import User
 from hymnarranger.db.session import get_db
 
 bearer_scheme = HTTPBearer()
+
+
+def _check_token_not_revoked(payload: dict, user: User) -> None:
+    """Відхиляє токен виданий до останньої зміни пароля."""
+    if user.password_changed_at is None:
+        return
+    iat = payload.get("iat")
+    if iat is None:
+        return
+    issued_at = datetime.fromtimestamp(iat, tz=timezone.utc)
+    changed_at = user.password_changed_at
+    if changed_at.tzinfo is None:
+        changed_at = changed_at.replace(tzinfo=timezone.utc)
+    if issued_at < changed_at:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Токен анульовано — змінено пароль")
 
 
 def get_current_user(
@@ -29,6 +45,7 @@ def get_current_user(
     user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Користувача не знайдено")
+    _check_token_not_revoked(payload, user)
     return user
 
 optional_bearer_scheme = HTTPBearer(auto_error=False)
@@ -51,7 +68,14 @@ def get_current_user_optional(
     if not user_id:
         return None
     try:
-        return db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+        user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
     except (ValueError, TypeError):
         return None
+    if user is None:
+        return None
+    try:
+        _check_token_not_revoked(payload, user)
+    except HTTPException:
+        return None
+    return user
 

@@ -51,6 +51,7 @@ export interface AnalyzeOut {
 /** POST /arrange */
 export interface ArrangeOut {
   musicxml: string
+  abc?: string
   preset: string
   name: string
   tempo: number
@@ -60,6 +61,7 @@ export interface ArrangeOut {
 /** POST /suite */
 export interface SuiteOut {
   musicxml: string
+  abc?: string
   meter: string
   meter_family: 'simple' | 'compound'
   seed: number | null
@@ -69,6 +71,7 @@ export interface SuiteOut {
 /** POST /merge */
 export interface MergeOut {
   musicxml: string
+  abc?: string
   meter: string
   sections: MergeSection[]
 }
@@ -85,6 +88,7 @@ export interface StyleSection {
 /** POST /style */
 export interface StyleOut {
   musicxml: string
+  abc?: string
   style: string
   meter: string
   key: string

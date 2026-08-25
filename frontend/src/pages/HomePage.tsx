@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Music, Music2, Download, Edit3, Loader2,
   Play, Check,
@@ -22,6 +23,12 @@ const AbcEditor = lazy(() => import('../components/AbcEditor').then(m => ({ defa
 
 type ResultTab = 'score' | 'editor' | 'chords' | 'export'
 
+type ResumeState = {
+  resumeAbc: string
+  resumeTitle: string
+  resumeParams: Record<string, unknown>
+} | null
+
 const INPUT_TABS: { id: InputMode; label: string }[] = [
   { id: 'upload', label: 'Завантажити файл' },
   { id: 'abc',    label: 'ABC-нотація' },
@@ -35,16 +42,23 @@ const SIDEBAR_TABS: { id: ResultTab; Icon: React.FC<{ className?: string }>; lab
 ]
 
 export function HomePage() {
+  const location   = useLocation()
+  const navigate   = useNavigate()
+  const resumeRef  = useRef(location.state as ResumeState)
+
   const { user } = useAuth()
   const analysis    = useAnalysis()
   const arrangement = useArrangement()
 
-  const { inputMode, setInputMode, fileSize, abcGetRef, handleFile, handleClear, handleAnalyzeFromAbc } =
-    useInputSource({
-      analysisLoad:     analysis.load,
-      arrangementClear: arrangement.clear,
-      analysisReset:    analysis.reset,
-    })
+  const {
+    inputMode, setInputMode, fileSize, abcGetRef,
+    resumedAbc, setResumedAbc,
+    handleFile, handleClear, handleAnalyzeFromAbc, analyzeFromText,
+  } = useInputSource({
+    analysisLoad:     analysis.load,
+    arrangementClear: arrangement.clear,
+    analysisReset:    analysis.reset,
+  })
 
   const { midiHostRef, midiLoading, midiReady, handlePlayMidi } =
     useMidiPreview(arrangement.result?.musicxml)
@@ -53,7 +67,9 @@ export function HomePage() {
 
   const [mode,     setMode]     = useState<Mode>('suite')
   const [preset,   setPreset]   = useState('')
-  const [seed,     setSeed]     = useState<number | null>(null)
+  const [seed,     setSeed]     = useState<number | null>(
+    () => (resumeRef.current?.resumeParams?.seed as number | null) ?? null
+  )
   const [varyBass, setVaryBass] = useState(true)
   const [strophes, setStrophes] = useState(5)
   const [coda,     setCoda]     = useState(true)
@@ -62,9 +78,22 @@ export function HomePage() {
     abcGetRef.current = getAbc
   }, [abcGetRef])
 
+  // On mount: restore a saved work from MyWorksPage navigation state
+  useEffect(() => {
+    const state = resumeRef.current
+    if (!state?.resumeAbc) return
+    setInputMode('abc')
+    setResumedAbc(state.resumeAbc)
+    analyzeFromText(state.resumeAbc, state.resumeTitle ?? 'Мелодія')
+    navigate('/', { replace: true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (analysis.analysis?.presets.length) {
-      setPreset(analysis.analysis.presets[0].id)
+      const resumedPreset = resumeRef.current?.resumeParams?.preset as string | undefined
+      const match = resumedPreset && analysis.analysis.presets.find(p => p.id === resumedPreset)
+      setPreset(match ? match.id : analysis.analysis.presets[0].id)
     }
   }, [analysis.analysis])
 
@@ -131,7 +160,11 @@ export function HomePage() {
               {inputMode === 'abc' && (
                 <div className="space-y-3">
                   <Suspense fallback={<div className="flex justify-center py-8"><Spinner /></div>}>
-                    <AbcEditor onReady={handleAbcReady} />
+                    <AbcEditor
+                      key={resumedAbc ?? 'new'}
+                      initialAbc={resumedAbc ?? undefined}
+                      onReady={handleAbcReady}
+                    />
                   </Suspense>
                   <button
                     type="button"

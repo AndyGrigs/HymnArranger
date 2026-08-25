@@ -63,6 +63,10 @@ class GeneratedWork(Base):
 
     owner: Mapped["User"] = relationship(back_populates="generated_works")
 
+    @property
+    def has_source(self) -> bool:
+        return self.source_abc is not None
+
 
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"

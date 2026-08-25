@@ -29,37 +29,47 @@ Separat wurde ein vollständig trainiertes neuronales Netz als **Forschungs-Base
 ## 🏗️ Architektur
 
 ```
-┌───────────────────────────────────────┐
-│    FRONTEND — React + Vite + TS        │
-│  - Melodie hochladen oder im           │
-│    eingebetteten Flat.io-Editor        │
-│    eingeben                            │
-│  - ABC-Notationseditor mit Toolbar     │
-│  - Preset / Suite / "Alle"-Modus wählen│
-│  - Notenvorschau (OpenSheetMusicDisplay)│
-│  - MIDI-Wiedergabe (GM Accordion)      │
-│  - MusicXML / MIDI herunterladen       │
-└───────────────────┬─────────────────────┘
+┌─────────────────────────────────────────────┐
+│         FRONTEND — React + Vite + TS         │
+│  - MusicXML / .abc / .mxl hochladen          │
+│  - ABC-Notationseditor mit Toolbar            │
+│  - Preset / Suite / "Alle"-Modus wählen       │
+│  - Notenvorschau (abcjs)                      │
+│  - MIDI-Wiedergabe (GM Accordion)             │
+│  - MusicXML / .mxl / MIDI / ABC herunterladen │
+│  - Authentifizierung, Werkebibliothek         │
+└───────────────────┬───────────────────────────┘
                      │ REST
-┌───────────────────▼─────────────────────┐
-│    BACKEND — FastAPI (Python)           │
-│  GET  /health                           │
-│  POST /analyze  — Taktart, Akkorde, Presets│
-│  POST /arrange  — ein Arrangement       │
-│  POST /suite    — Thema + Variationen   │
-│  POST /merge    — alle Presets in einer │
-│  POST /compress — Packen als .mxl       │
-│  POST /midi     — Konvertierung zu MIDI │
-└───────────────────┬─────────────────────┘
+┌───────────────────▼───────────────────────────┐
+│         BACKEND — FastAPI (Python)             │
+│                                                │
+│  Arrangement-API:                              │
+│    GET  /health                                │
+│    POST /analyze  — Taktart, Akkorde, Presets  │
+│    POST /arrange  — ein Arrangement            │
+│    POST /suite    — Thema + Variationen        │
+│    POST /merge    — alle Presets in einer      │
+│    POST /compress — Packen als .mxl            │
+│    POST /midi     — Konvertierung zu MIDI      │
+│    POST /export/abc — Konvertierung zu ABC     │
+│                                                │
+│  Auth-API (/auth/*):                           │
+│    register, login, verify-email,              │
+│    forgot/reset password                       │
+│                                                │
+│  Works-API (/works/*):                         │
+│    auflisten, abrufen, umbenennen,             │
+│    gespeicherte Werke löschen                  │
+└───────────────────┬───────────────────────────┘
                      │
-┌───────────────────▼─────────────────────┐
-│  ARRANGEMENT-ENGINE — hymnarranger/      │
-│  (music21, regelbasiert, deterministisch)│
-│  - Parsing, Harmonik, Figuration         │
-│  - linke Hand Stradella + Voice Leading  │
-│  - Textur-Presets je Taktart-Typ         │
-│  - Suite: Thema + Variationen (Seed)     │
-└───────────────────────────────────────────┘
+┌───────────────────▼───────────────────────────┐
+│  ARRANGEMENT-ENGINE — hymnarranger/              │
+│  (music21, regelbasiert, deterministisch)        │
+│  - Parsing, Harmonik, Figuration                 │
+│  - linke Hand Stradella + Voice Leading          │
+│  - Textur-Presets je Taktart-Typ                 │
+│  - Suite: Thema + Variationen (Seed)             │
+└───────────────────────────────────────────────────┘
 
    Separater Forschungszweig (nicht produktiv im Einsatz):
    ein Encoder-Decoder Music Transformer (RPR), trainiert auf
@@ -85,10 +95,12 @@ Separat wurde ein vollständig trainiertes neuronales Netz als **Forschungs-Base
 - 🎻 Linke Hand nach Stradella-System mit Voice-Leading-Optimierung
 - 🧩 Suite-Modus: Thema + eine Folge von Variationen, reproduzierbar über einen Zufalls-Seed
 - 📚 "Alle Presets"-Modus: jede Textur nacheinander in einer Partitur, zum Vergleich
-- 👁️ Notenvorschau im Browser (OpenSheetMusicDisplay) und MIDI-Wiedergabe (GM-Accordion-Programm)
-- ✍️ Melodie direkt im Browser über einen eingebetteten Flat.io-Editor eingeben, oder Datei hochladen
-- 🎵 **ABC-Notationseditor** — Noten per Toolbar-Buttons eingeben (Notenwert, Oktave, Vorzeichen), Akkorde visuell zusammenstellen, Live-Vorschau per abcjs; `.abc`-Dateien vom Backend akzeptiert → [vollständige Anleitung](docs/abc-editor.md)
-- 📄 Ergebnis als MusicXML, komprimiertes .mxl oder MIDI herunterladen
+- 👁️ Notenvorschau im Browser über **abcjs** und MIDI-Wiedergabe (GM-Accordion-Programm)
+- 🎵 **ABC-Notationseditor** — Noten per Toolbar-Buttons eingeben (Notenwert, Oktave, Vorzeichen), Akkorde visuell zusammenstellen, Live-Vorschau → [vollständige Anleitung](docs/abc-editor.md)
+- 📤 **ABC-Export** — beliebige Arrangements in ABC-Notation konvertieren
+- 📄 Ergebnis als MusicXML, komprimiertes .mxl, MIDI oder ABC herunterladen
+- 🔐 Benutzerkonten mit E-Mail-Verifizierung, JWT-Authentifizierung und Passwort-Reset per Mail
+- 📚 **Meine Werke** — gespeicherte Arrangements mit Volltextsuche und Paginierung
 - 🧪 Dokumentierte neuronale Baseline zum methodischen Vergleich (siehe unten)
 
 ---
@@ -99,12 +111,14 @@ Separat wurde ein vollständig trainiertes neuronales Netz als **Forschungs-Base
 |------|-----------|-----|
 | **Frontend** | React 18 + TypeScript + Vite | Schneller Entwicklungszyklus, typisierte API-Schicht |
 | **Styling** | Tailwind CSS v4 | Utility-first, kaum Konfigurationsaufwand |
-| **Notendarstellung** | OpenSheetMusicDisplay | MusicXML-Rendering im Browser |
+| **ABC-Notation + Notenvorschau** | abcjs 6 | Textbasierter ABC-Editor mit Live-Vorschau, Toolbar und Read-only-Notenansicht |
 | **MIDI-Wiedergabe** | html-midi-player | Web-Component-Player, GM-Soundfont |
-| **Notation im Browser** | Flat.io Embed SDK | Melodie eingeben, ohne die App zu verlassen |
-| **ABC-Notationseditor** | abcjs 6 | Textbasierte Noteneingabe mit Live-Vorschau und Toolbar — kein Syntaxwissen erforderlich |
 | **Backend** | Python + FastAPI + Uvicorn | Dünne HTTP-Schicht über der Engine |
 | **Arrangement-Engine** | music21 | Parsing & Generierung symbolischer Musik |
+| **Datenbank** | PostgreSQL + SQLAlchemy + Alembic | Persistente Benutzerkonten und gespeicherte Werke |
+| **Authentifizierung** | PyJWT + bcrypt + Brevo | JWT-Tokens, Passwort-Hashing, transaktionale E-Mails |
+| **Rate Limiting** | slowapi | Anfragebegrenzung pro Route |
+| **Sicherheit** | defusedxml | Schutz vor XML/Zip-Bomb-Uploads |
 | **ML-Baseline (nur Forschung)** | PyTorch + Hugging Face Transformers | Encoder-Decoder Music Transformer mit RPR |
 | **Datensatzvorbereitung** | music21, Audiveris | Melodieextraktion, PDF → MusicXML |
 | **Tests** | pytest, httpx2 | Unit-Tests, FastAPI-Testclient |
@@ -119,28 +133,71 @@ HymnArranger/
 ├── commands.md                # Kurzreferenz der CLI-Befehle
 ├── requirements.txt
 │
-├── hymnarranger/               # Kernpaket — die Arrangement-Engine
-│   ├── parsing.py             # MusicXML → interner Kontext (absolute Offsets)
+├── hymnarranger/               # Kernpaket
+│   ├── api.py                  # FastAPI-App — Arrangement-Endpunkte + Middleware
+│   ├── parsing.py              # MusicXML / ABC → interner Kontext
 │   ├── theory.py               # reine diatonische/harmonische Hilfsfunktionen
 │   ├── figuration.py           # Figurations-Engine der rechten Hand
 │   ├── textures.py             # alternative Texturen der rechten Hand
 │   ├── lefthand.py             # Stradella-Voicing + Voice-Leading-Optimierung
-│   ├── assembly.py             # Partitur-Zusammenbau, Instrument, MIDI-Export
-│   ├── suite.py                 # Planer für Thema + Variationen (Seed-basiert)
+│   ├── assembly.py             # Partitur-Zusammenbau, MIDI / MusicXML / ABC-Export
+│   ├── abcexport.py            # MusicXML → ABC-Konvertierung
+│   ├── suite.py                # Planer für Thema + Variationen (Seed-basiert)
+│   ├── styles.py               # benannte Stil-Presets
+│   ├── model.py                # Datenmodell des Arrangements
+│   ├── sakala.py               # Tonleiter-/Tonart-Hilfsfunktionen
 │   ├── meters/
 │   │   ├── simple.py           # Presets für 2/4, 3/4, 4/4
 │   │   └── compound.py         # Presets für 6/8, 9/8, 12/8
-│   └── api.py                   # FastAPI-App (/health, /analyze, /arrange, /suite, /merge, /compress, /midi)
-│                                # Akzeptiert auch .abc-Dateien (music21 parst nativ)
+│   │
+│   ├── auth/                   # Authentifizierungs-Subsystem
+│   │   ├── routes.py           # /auth/*-Endpunkte (register, login, verify-email, reset-password)
+│   │   ├── dependencies.py     # get_current_user / get_current_user_optional
+│   │   ├── security.py         # JWT, bcrypt, Token-Hilfsfunktionen
+│   │   ├── schemas.py          # Pydantic Request-/Response-Modelle
+│   │   ├── email.py            # transaktionale E-Mails via Brevo
+│   │   └── limiter.py          # slowapi Rate-Limiter-Instanz
+│   │
+│   ├── works/                  # Subsystem für gespeicherte Arrangements
+│   │   ├── routes.py           # /works/*-Endpunkte (auflisten, abrufen, umbenennen, löschen)
+│   │   └── schemas.py          # WorkSummary, WorkDetail, WorkRename, WorksPage
+│   │
+│   └── db/                     # Datenbankschicht
+│       ├── models.py           # SQLAlchemy ORM-Modelle (User, Work, Tokens)
+│       ├── session.py          # Engine + get_db-Abhängigkeit
+│       └── works.py            # CRUD-Hilfsfunktionen für gespeicherte Werke
 │
 ├── frontend/                    # React + Vite + TypeScript
 │   └── src/
-│       ├── api/                 # typisierter Client + Typen
+│       ├── api/                 # typisierter API-Client + Typen
 │       ├── components/
-│       │   ├── AbcEditor.tsx    # ABC-Notationseditor (Toolbar + abcjs Live-Vorschau)
-│       │   ├── FlatEmbedEditor.tsx
-│       │   └── ...              # FileDropzone, SheetViewer, MidiPlayer, ...
-│       ├── hooks/               # useAnalysis, useArrangement
+│       │   ├── AbcEditor.tsx       # ABC-Notationseditor (Toolbar + abcjs Live-Vorschau)
+│       │   ├── AbcPaper.tsx        # Read-only-Notenansicht via abcjs
+│       │   ├── AnalysisPanel.tsx
+│       │   ├── AuthContext.tsx     # React-Auth-Kontext + Provider
+│       │   ├── DownloadBar.tsx
+│       │   ├── FileDropzone.tsx
+│       │   ├── GeneratePanel.tsx
+│       │   ├── MidiPlayer.tsx
+│       │   ├── Navbar.tsx
+│       │   ├── ProtectedRoute.tsx
+│       │   ├── SectionList.tsx
+│       │   └── ui/                 # Card, Spinner, ErrorBoundary
+│       ├── hooks/
+│       │   ├── useAnalysis.ts
+│       │   ├── useArrangement.ts
+│       │   ├── useAuth.ts
+│       │   ├── useInputSource.ts
+│       │   └── useMidiPreview.ts
+│       ├── pages/
+│       │   ├── HomePage.tsx
+│       │   ├── HowPage.tsx
+│       │   ├── MyWorksPage.tsx         # Werkebibliothek mit Suche + Paginierung
+│       │   ├── LoginPage.tsx
+│       │   ├── RegisterPage.tsx
+│       │   ├── ForgotPasswordPage.tsx
+│       │   ├── ResetPasswordPage.tsx
+│       │   └── VerifyEmailPage.tsx
 │       └── lib/                 # Musik-Hilfsfunktionen, Download-Utilities
 │
 ├── docs/
@@ -226,9 +283,12 @@ Der Datensatz stammt aus öffentlich zugänglicher christlicher Chormusik (**not
 - [x] Datensatz gesammelt und aufbereitet (732 Paare aus 222 Ausgangsliedern)
 - [x] Music Transformer als dokumentierte Forschungs-Baseline trainiert
 - [x] FastAPI-Backend für die regelbasierte Engine
-- [x] Frontend mit React + Vite (Upload, Editor im Browser, Noten + MIDI, Download)
+- [x] Frontend mit React + Vite (Upload, ABC-Editor, Noten + MIDI, Download)
 - [x] API-Client des Frontends mit den Backend-Endpunkten abgeglichen
 - [x] ABC-Notationseditor mit Live-Vorschau, Noten-/Akkord-Toolbar und `.abc`-Backend-Unterstützung
+- [x] ABC-Export — Konvertierung beliebiger Arrangements in ABC-Notation
+- [x] Benutzerauthentifizierung (Registrierung, E-Mail-Verifizierung, Login, Passwort-Reset via Brevo)
+- [x] Werkebibliothek mit Volltextsuche und Paginierung (Meine Werke)
 - [ ] Deployment (Docker-Konfiguration für Entwicklung vorhanden, Produktions-Deployment noch offen)
 - [ ] `LICENSE`-Datei passend zum obigen Badge ergänzen
 - [ ] Stilparameter für weitere Instrumente über Bajan hinaus (langfristig)

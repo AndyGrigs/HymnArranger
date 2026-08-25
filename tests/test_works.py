@@ -1,5 +1,10 @@
 """Works endpoint tests — ownership isolation and basic CRUD."""
+import uuid as _uuid
+
+from hymnarranger.db.models import GeneratedWork
 from tests.conftest import bearer
+
+_ABC = "X:1\nT:Test\nM:4/4\nL:1/8\nK:C\nCDEF GABc |]"
 
 
 # ── Isolation: other user's work must return 404 ──────────────────────────────
@@ -88,3 +93,36 @@ def test_list_works_only_returns_own(auth_client, make_user, make_work):
 def test_list_works_unauthenticated_returns_403(auth_client):
     r = auth_client.get("/works")
     assert r.status_code in (401, 403)
+
+
+# ── source_abc / has_source ───────────────────────────────────────────────────
+
+def test_work_detail_includes_source_abc(auth_client, make_user, db_session):
+    alice = make_user(email="source-abc@example.com")
+    work = GeneratedWork(
+        id=_uuid.uuid4(),
+        user_id=alice.id,
+        title="ABC Work",
+        input_params={},
+        musicxml_content="<score/>",
+        source_abc=_ABC,
+    )
+    db_session.add(work)
+    db_session.commit()
+
+    r = auth_client.get(f"/works/{work.id}", headers=bearer(alice))
+    assert r.status_code == 200
+    data = r.json()
+    assert data["source_abc"] is not None
+    assert data["source_abc"].startswith("X:")
+    assert data["has_source"] is True
+
+
+def test_has_source_false_when_no_abc(auth_client, make_user, make_work):
+    alice = make_user(email="no-abc@example.com")
+    work = make_work(alice, title="No ABC")
+
+    r = auth_client.get("/works", headers=bearer(alice))
+    assert r.status_code == 200
+    item = next(w for w in r.json()["items"] if w["id"] == str(work.id))
+    assert item["has_source"] is False

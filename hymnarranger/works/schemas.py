@@ -17,6 +17,7 @@ class WorkSummary(BaseModel):
     title: str
     created_at: datetime
     input_params: dict
+    has_source: bool
 
     class Config:
         from_attributes = True

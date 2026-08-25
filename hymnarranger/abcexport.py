@@ -221,6 +221,12 @@ def measure_to_abc(m: stream.Measure, sharps: int, voice_id: Optional[str] = Non
         # Репетиційна позначка в ABC — це анотація над нотою.
         tokens.append(f'"^{mark.content}"')
 
+    if with_marks:
+        mm = m.getElementsByClass(tempo.MetronomeMark).first()
+        if mm is not None and mm.number:
+            ref = Fraction(mm.referent.quarterLength).limit_denominator(16) / 4
+            tokens.append(f'[Q:{ref.numerator}/{ref.denominator}={int(mm.number)}]')
+
     voices = list(m.getElementsByClass(stream.Voice))
     if voice_id is not None:
         chosen = next((v for v in voices if str(v.id) == str(voice_id)), None)

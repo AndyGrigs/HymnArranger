@@ -15,9 +15,12 @@ from __future__ import annotations
 import asyncio
 import functools
 import io
+import logging
 import os
 import tempfile
 from typing import Optional, List
+
+logger = logging.getLogger(__name__)
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -394,8 +397,8 @@ async def arrange_one(request: Request,
             try:
                 import music21 as _m21
                 _source_abc = to_abc_string(_m21.converter.parse(path))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning('ABC export failed (source, arrange): %s', exc)
             save_generated_work(
                 db, current_user,
                 title=f'{cfg.name} ({preset})',
@@ -408,7 +411,8 @@ async def arrange_one(request: Request,
             return _download(score, f'{preset}.mxl')
         try:
             abc_str: Optional[str] = to_abc_string(score)
-        except Exception:
+        except Exception as exc:
+            logger.warning('ABC export failed (output, arrange): %s', exc)
             abc_str = None
         return ArrangeOut(musicxml=musicxml_str, abc=abc_str, preset=preset,
                           name=cfg.name, tempo=cfg.tempo or 84,
@@ -440,8 +444,8 @@ async def suite(request: Request,
             try:
                 import music21 as _m21
                 _source_abc_s = to_abc_string(_m21.converter.parse(path))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning('ABC export failed (source, suite): %s', exc)
             save_generated_work(
                 db, current_user,
                 title=f'Suite ({ctx.ts.ratioString})',
@@ -454,7 +458,8 @@ async def suite(request: Request,
             return _download(score, 'suite.mxl')
         try:
             abc_str_s: Optional[str] = to_abc_string(score)
-        except Exception:
+        except Exception as exc:
+            logger.warning('ABC export failed (output, suite): %s', exc)
             abc_str_s = None
         return SuiteOut(
             musicxml=musicxml_str,
@@ -500,7 +505,8 @@ async def style_arrange(request: Request,
         musicxml_s = to_musicxml_string(score)
         try:
             abc_s: Optional[str] = to_abc_string(score)
-        except Exception:
+        except Exception as exc:
+            logger.warning('ABC export failed (output, style): %s', exc)
             abc_s = None
         return {'musicxml': musicxml_s, 'abc': abc_s,
                 'style': style,
@@ -580,7 +586,8 @@ async def merge(request: Request, download: bool = Query(False)):
         musicxml_m = to_musicxml_string(score)
         try:
             abc_m: Optional[str] = to_abc_string(score)
-        except Exception:
+        except Exception as exc:
+            logger.warning('ABC export failed (output, merge): %s', exc)
             abc_m = None
         return {'musicxml': musicxml_m, 'abc': abc_m,
                 'meter': ctx.ts.ratioString,

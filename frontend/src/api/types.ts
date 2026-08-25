@@ -148,6 +148,7 @@ export interface WorkSummary {
   title: string
   created_at: string
   input_params: Record<string, unknown>
+  has_source: boolean
 }
 
 /** GET /works/{id} */

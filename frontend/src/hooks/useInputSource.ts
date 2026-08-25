@@ -12,6 +12,7 @@ interface Deps {
 export function useInputSource({ analysisLoad, arrangementClear, analysisReset }: Deps) {
   const [inputMode, setInputMode] = useState<InputMode>('upload')
   const [fileSize,  setFileSize]  = useState<number | undefined>()
+  const [resumedAbc, setResumedAbc] = useState<string | null>(null)
   const abcGetRef = useRef<(() => string) | null>(null)
 
   function handleFile(file: File) {
@@ -26,12 +27,22 @@ export function useInputSource({ analysisLoad, arrangementClear, analysisReset }
     analysisReset()
   }
 
-  async function handleAnalyzeFromAbc() {
-    const text = abcGetRef.current?.()
+  function analyzeFromText(text: string, label: string) {
     if (!text?.trim()) return
     arrangementClear()
-    analysisLoad(new File([text], 'melody.abc', { type: 'text/plain' }), 'Мелодія з ABC-редактора')
+    analysisLoad(new File([text], 'melody.abc', { type: 'text/plain' }), label)
   }
 
-  return { inputMode, setInputMode, fileSize, abcGetRef, handleFile, handleClear, handleAnalyzeFromAbc }
+  function handleAnalyzeFromAbc() {
+    analyzeFromText(abcGetRef.current?.() ?? '', 'Мелодія з ABC-редактора')
+  }
+
+  return {
+    inputMode, setInputMode,
+    fileSize,
+    abcGetRef,
+    resumedAbc, setResumedAbc,
+    handleFile, handleClear,
+    analyzeFromText, handleAnalyzeFromAbc,
+  }
 }

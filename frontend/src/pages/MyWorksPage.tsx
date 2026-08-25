@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Eye, X, Music, Pencil, Check, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trash2, Eye, X, Music, Pencil, Check, Search, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { api, ApiError, type WorkSummary, type WorkDetail } from '../api'
 import { Spinner } from '../components/ui/Spinner'
@@ -124,6 +124,27 @@ export function MyWorksPage() {
     }
   }
 
+  async function handleResume(id: string) {
+    if (!token) return
+    setSelectedLoading(true)
+    setError(null)
+    try {
+      const detail = await api.getWork(token, id)
+      if (!detail.source_abc) return
+      navigate('/', {
+        state: {
+          resumeAbc: detail.source_abc,
+          resumeTitle: detail.title,
+          resumeParams: detail.input_params,
+        },
+      })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не вдалося відкрити роботу')
+    } finally {
+      setSelectedLoading(false)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
       <h1 className="font-display text-2xl font-bold text-ink">Мої роботи</h1>
@@ -220,6 +241,15 @@ export function MyWorksPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => handleResume(w.id)}
+                    disabled={!w.has_source}
+                    title="Продовжити роботу з цією мелодією"
+                    className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-sm text-ink/70 transition hover:bg-ink/5 disabled:opacity-30"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleDelete(w.id)}
                     disabled={deletingId === w.id}
                     className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-sm text-accent transition hover:bg-accent/5 disabled:opacity-50"
@@ -298,14 +328,32 @@ export function MyWorksPage() {
                 <Music className="h-4 w-4" />
                 {selected?.title ?? 'Завантаження…'}
               </span>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                aria-label="Закрити"
-                className="rounded-full p-1.5 text-ink/50 hover:bg-ink/5 hover:text-ink"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                {selected?.source_abc && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/', {
+                      state: {
+                        resumeAbc: selected.source_abc,
+                        resumeTitle: selected.title,
+                        resumeParams: selected.input_params,
+                      },
+                    })}
+                    className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-sm text-ink/70 transition hover:bg-ink/5"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Продовжити роботу
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  aria-label="Закрити"
+                  className="rounded-full p-1.5 text-ink/50 hover:bg-ink/5 hover:text-ink"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             <div className="p-4">
               {selectedLoading || !selected ? (

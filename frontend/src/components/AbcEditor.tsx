@@ -116,10 +116,10 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
   const textareaId = `abc-ta-${uid}`
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const editorRef = useRef<any>(null)
-  const synthRef = useRef<any>(null)
+  const editorRef = useRef<abcjs.Editor | null>(null)
+  const synthRef = useRef<abcjs.MidiBuffer | null>(null)
   // Stable wrapper so abcjs.Editor's cached params always call the latest handler
-  const dragHandlerRef = useRef<(...args: any[]) => void>(() => {})
+  const dragHandlerRef = useRef<abcjs.ClickListener>(() => {})
 
   const [duration, setDuration] = useState<Duration>('eighth')
   const [octave, setOctave] = useState(0)
@@ -138,16 +138,16 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
 
   // Keep current drag handler in ref to avoid stale closures passed to abcjs
   dragHandlerRef.current = (
-    _abcElem: any,
+    abcElem: abcjs.AbcElem,
     _tune: number,
     _classes: string,
-    _analysis: any,
-    drag: any,
+    _analysis: abcjs.ClickListenerAnalysis,
+    drag: abcjs.ClickListenerDrag,
   ) => {
     if (!drag?.step) return
     const ta = textareaRef.current
-    if (!ta || drag.startChar == null) return
-    const newText = transposeNoteAt(ta.value, drag.startChar, drag.endChar, drag.step)
+    if (!ta || abcElem.startChar == null || abcElem.endChar == null) return
+    const newText = transposeNoteAt(ta.value, abcElem.startChar, abcElem.endChar, drag.step)
     if (newText === ta.value) return
     // Replace entire text via execCommand so the undo stack is preserved
     ta.focus()
@@ -159,19 +159,17 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
   // dragging:true lets users drag notes up/down to change pitch; clickListener
   // receives startChar/endChar so we can rewrite just that note in the ABC text.
   useEffect(() => {
-    let editor: any
-    editor = new (abcjs as any).Editor(textareaId, {
+    const editor = new abcjs.Editor(textareaId, {
       paper_id: paperId,
+      generate_warnings: true,
       abcjsParams: {
         responsive: 'resize',
         dragging: true,
-        clickListener: (...args: any[]) => dragHandlerRef.current(...args),
+        clickListener: (abcElem, tuneNumber, classes, analysis, drag) =>
+          dragHandlerRef.current(abcElem, tuneNumber, classes, analysis, drag),
       },
-      onChange: () => {
-        const obj = editor?.getABCObject?.()
-        const tune = Array.isArray(obj) ? obj?.[0] : obj
-        const raw: string[] = tune?.warnings ?? []
-        setAbcWarnings(raw.map((w: string) => w.replace(/<[^>]+>/g, '')))
+      onchange: (ed: abcjs.Editor) => {
+        setAbcWarnings((ed.getTunes()?.[0]?.warnings ?? []).map((w: string) => w.replace(/<[^>]+>/g, '')))
         setBarCount(countBars(textareaRef.current?.value ?? ''))
       },
     })
@@ -240,8 +238,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
       return
     }
 
-    const synthLib = (abcjs as any).synth
-    if (!synthLib?.supportsAudio?.()) {
+    if (!abcjs.synth.supportsAudio()) {
       alert('Ваш браузер не підтримує Web Audio API')
       return
     }
@@ -251,15 +248,14 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
       const visualObj = abcjs.renderAbc('*', ta.value)
       if (!visualObj?.[0]) return
       if (!synthRef.current) {
-        synthRef.current = new synthLib.CreateSynth()
+        synthRef.current = new abcjs.synth.CreateSynth()
       }
-      await synthRef.current.init({ visualObj: visualObj[0] })
-      await synthRef.current.prime()
-      synthRef.current.start()
+      const synth = synthRef.current
+      await synth.init({ visualObj: visualObj[0] })
+      const { duration } = await synth.prime()
+      synth.start()
       setIsPlaying(true)
-      // duration (seconds) is set on the synth instance after prime()
-      const durationMs = (synthRef.current.duration ?? 30) * 1000
-      setTimeout(() => setIsPlaying(false), durationMs + 300)
+      setTimeout(() => setIsPlaying(false), duration * 1000 + 300)
     } catch {
       setIsPlaying(false)
     }

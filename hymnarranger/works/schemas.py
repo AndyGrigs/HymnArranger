@@ -2,13 +2,14 @@ import uuid
 from datetime import datetime
 from typing import Generic, Optional, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
+from typing import Annotated
 
 T = TypeVar("T")
 
 
 class WorkRename(BaseModel):
-    title: str = Field(..., min_length=1, max_length=255, strip_whitespace=True)
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
 
 
 class WorkSummary(BaseModel):

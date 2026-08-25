@@ -42,7 +42,10 @@ def get_current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Недійсний токен")
 
     user_id = payload.get("sub")
-    user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+    try:
+        user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+    except (ValueError, TypeError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Недійсний токен")
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Користувача не знайдено")
     _check_token_not_revoked(payload, user)

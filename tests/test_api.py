@@ -139,3 +139,23 @@ def test_unsupported_content_type_returns_422(client):
 def test_unknown_preset_returns_400(client, musicxml):
     r = client.post("/arrange?preset=nonexistent_preset", json={"musicxml": musicxml})
     assert r.status_code == 400
+
+
+# ── ABC field ─────────────────────────────────────────────────────────────────
+
+def test_arrange_returns_valid_abc(client, musicxml):
+    r = client.post("/arrange", json={"musicxml": musicxml})
+    assert r.status_code == 200
+    body = r.json()
+    assert "abc" in body
+    assert body["abc"] is not None, "abc must not be None"
+    assert "X:" in body["abc"], "abc must contain a reference number header (X:)"
+
+
+def test_suite_returns_valid_abc(client, musicxml):
+    r = client.post("/suite?seed=1", json={"musicxml": musicxml})
+    assert r.status_code == 200
+    body = r.json()
+    assert "abc" in body
+    assert body["abc"] is not None
+    assert "X:" in body["abc"]

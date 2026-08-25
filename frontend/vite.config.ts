@@ -10,9 +10,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-abc':   ['abcjs'],
+        manualChunks(id) {
+          if (id.includes('node_modules/abcjs')) return 'vendor-abc';
+          if (id.includes('node_modules/react')) return 'vendor-react';
         },
       },
     },

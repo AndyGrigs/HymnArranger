@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function register(email: string, password: string) {
     await api.register(email, password);
-    await login(email, password); // одразу логінимо після реєстрації
+    // Логін після реєстрації неможливий — бекенд вимагає підтвердження пошти.
   }
 
   function logout() {

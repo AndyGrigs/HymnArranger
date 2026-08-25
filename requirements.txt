@@ -45,3 +45,5 @@ email-validator==2.2.0        # потрібен для pydantic EmailStr
 # ── Розробка і тести ──────────────────────────────────────────────
 pytest==9.1.1
 httpx2                        # потрібен для starlette.testclient (starlette 1.x)
+slowapi==0.1.9
+defusedxml==0.7.1

@@ -183,6 +183,14 @@ export const api = {
     return getJson<User>('/auth/me', token, signal)
   },
 
+  verifyEmail(token: string, signal?: AbortSignal) {
+    return sendJson<MessageOut>('POST', '/auth/verify-email', { token }, undefined, signal)
+  },
+
+  resendVerification(email: string, signal?: AbortSignal) {
+    return sendJson<MessageOut>('POST', '/auth/resend-verification', { email }, undefined, signal)
+  },
+
   forgotPassword(email: string, signal?: AbortSignal) {
     return sendJson<MessageOut>('POST', '/auth/forgot-password', { email }, undefined, signal)
   },

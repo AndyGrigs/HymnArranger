@@ -26,7 +26,7 @@ export function RegisterPage() {
     setLoading(true)
     try {
       await register(email, password)
-      navigate('/')
+      navigate('/verify-email', { state: { email } })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не вдалося зареєструватись')
     } finally {

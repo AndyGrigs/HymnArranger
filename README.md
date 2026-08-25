@@ -29,36 +29,46 @@ A separate, fully-trained neural network was also built and evaluated as a **res
 ## 🏗️ Architecture
 
 ```
-┌───────────────────────────────────────┐
-│      FRONTEND — React + Vite + TS      │
-│  - upload a melody or write it in a    │
-│    Flat.io embedded editor             │
-│  - ABC notation editor with toolbar    │
-│  - pick a preset / suite / "all" mode  │
-│  - sheet preview (OpenSheetMusicDisplay)│
-│  - MIDI playback (GM Accordion)        │
-│  - download MusicXML / MIDI            │
-└───────────────────┬─────────────────────┘
+┌───────────────────────────────────────────┐
+│        FRONTEND — React + Vite + TS        │
+│  - upload MusicXML / .abc / .mxl file     │
+│  - ABC notation editor with toolbar        │
+│  - pick a preset / suite / "all" mode      │
+│  - sheet preview (abcjs)                   │
+│  - MIDI playback (GM Accordion)            │
+│  - download MusicXML / .mxl / MIDI / ABC  │
+│  - user auth, saved works library          │
+└───────────────────┬───────────────────────┘
                      │ REST
-┌───────────────────▼─────────────────────┐
-│      BACKEND — FastAPI (Python)         │
-│  GET  /health                           │
-│  POST /analyze  — meter, chords, presets│
-│  POST /arrange  — single arrangement    │
-│  POST /suite    — theme + variations    │
-│  POST /merge    — all presets in one    │
-│  POST /compress — pack to .mxl          │
-│  POST /midi     — convert to MIDI       │
-└───────────────────┬─────────────────────┘
+┌───────────────────▼───────────────────────┐
+│        BACKEND — FastAPI (Python)          │
+│                                            │
+│  Arrangement API:                          │
+│    GET  /health                            │
+│    POST /analyze  — meter, chords, presets │
+│    POST /arrange  — single arrangement     │
+│    POST /suite    — theme + variations     │
+│    POST /merge    — all presets in one     │
+│    POST /compress — pack to .mxl           │
+│    POST /midi     — convert to MIDI        │
+│    POST /export/abc — convert to ABC       │
+│                                            │
+│  Auth API (/auth/*):                       │
+│    register, login, verify-email,          │
+│    forgot/reset password                   │
+│                                            │
+│  Works API (/works/*):                     │
+│    list, get, rename, delete saved works   │
+└───────────────────┬───────────────────────┘
                      │
-┌───────────────────▼─────────────────────┐
-│   ARRANGEMENT ENGINE — hymnarranger/     │
-│   (music21, rule-based, deterministic)   │
-│  - parsing, harmony, figuration          │
-│  - Stradella left hand + voice leading   │
-│  - textural presets per meter type       │
-│  - suite: theme + variations (seeded)    │
-└───────────────────────────────────────────┘
+┌───────────────────▼───────────────────────┐
+│   ARRANGEMENT ENGINE — hymnarranger/        │
+│   (music21, rule-based, deterministic)      │
+│  - parsing, harmony, figuration             │
+│  - Stradella left hand + voice leading      │
+│  - textural presets per meter type          │
+│  - suite: theme + variations (seeded)       │
+└─────────────────────────────────────────────┘
 
    Separate research track (not served in production):
    an encoder-decoder Music Transformer (RPR), trained on
@@ -84,10 +94,12 @@ A separate, fully-trained neural network was also built and evaluated as a **res
 - 🎻 Stradella-bass left hand with voice-leading optimization
 - 🧩 Suite mode: theme + a sequence of variations, reproducible via a random seed
 - 📚 "All presets" mode: every texture rendered back-to-back in one score, for comparison
-- 👁️ In-browser sheet preview (OpenSheetMusicDisplay) and MIDI playback (GM Accordion program)
-- ✍️ Write a melody directly in the browser via an embedded Flat.io editor, or upload a file
-- 🎵 **ABC notation editor** — enter notes with toolbar buttons (duration, octave, accidentals), build chords visually, live sheet preview via abcjs; `.abc` files accepted by the backend → [full guide](docs/abc-editor.md)
-- 📄 Download the result as MusicXML, compressed .mxl, or MIDI
+- 👁️ In-browser sheet preview via **abcjs** and MIDI playback (GM Accordion program)
+- 🎵 **ABC notation editor** — enter notes with toolbar buttons (duration, octave, accidentals), build chords visually, live sheet preview; `.abc` files accepted by the backend → [full guide](docs/abc-editor.md)
+- 📤 **ABC export** — convert any arrangement back to ABC notation
+- 📄 Download the result as MusicXML, compressed .mxl, MIDI, or ABC
+- 🔐 User accounts with email verification, JWT authentication, and password reset via email
+- 📚 **My Works** — saved arrangements per user, with full-text search and pagination
 - 🧪 A documented neural-network baseline for methodological comparison (see below)
 
 ---
@@ -98,12 +110,14 @@ A separate, fully-trained neural network was also built and evaluated as a **res
 |------|-----------|-----|
 | **Frontend** | React 18 + TypeScript + Vite | Fast dev loop, typed API layer |
 | **Styling** | Tailwind CSS v4 | Utility-first, no config overhead |
-| **Sheet rendering** | OpenSheetMusicDisplay | MusicXML rendering in the browser |
+| **ABC notation + sheet rendering** | abcjs 6 | Text-based music entry with live preview, toolbar, and read-only score view |
 | **MIDI playback** | html-midi-player | Web-component player, GM soundfont |
-| **In-browser notation** | Flat.io Embed SDK | Write a melody without leaving the app |
-| **ABC notation editor** | abcjs 6 | Text-based music entry with live preview and toolbar — no syntax knowledge needed |
 | **Backend** | Python + FastAPI + Uvicorn | Thin HTTP layer over the engine |
 | **Arrangement engine** | music21 | Symbolic music parsing & generation |
+| **Database** | PostgreSQL + SQLAlchemy + Alembic | Persistent user accounts and saved works |
+| **Auth** | PyJWT + bcrypt + Brevo | JWT tokens, password hashing, transactional email |
+| **Rate limiting** | slowapi | Per-route request throttling |
+| **Security** | defusedxml | Protection against XML/zip-bomb uploads |
 | **ML baseline (research only)** | PyTorch + Hugging Face Transformers | Encoder-decoder Music Transformer w/ RPR |
 | **Dataset prep** | music21, Audiveris | Melody extraction, PDF → MusicXML |
 | **Testing** | pytest, httpx2 | Unit tests, FastAPI test client |
@@ -118,28 +132,71 @@ HymnArranger/
 ├── commands.md              # quick CLI reference
 ├── requirements.txt
 │
-├── hymnarranger/             # core package — the arrangement engine
-│   ├── parsing.py           # MusicXML → internal context (absolute offsets)
-│   ├── theory.py            # pure diatonic/harmony helpers
+├── hymnarranger/             # core package
+│   ├── api.py               # FastAPI app — arrangement endpoints + middleware
+│   ├── parsing.py           # MusicXML / ABC → internal context
+│   ├── theory.py            # diatonic/harmony helpers
 │   ├── figuration.py        # right-hand ornamentation engine
 │   ├── textures.py          # alternative right-hand textures
 │   ├── lefthand.py          # Stradella voicing + voice-leading optimization
-│   ├── assembly.py          # score assembly, instrument, MIDI export
+│   ├── assembly.py          # score assembly, MIDI / MusicXML / ABC export
+│   ├── abcexport.py         # MusicXML → ABC conversion
 │   ├── suite.py             # theme + variations planner (seeded)
+│   ├── styles.py            # named style presets
+│   ├── model.py             # arrangement data model
+│   ├── sakala.py            # scale/key helpers
 │   ├── meters/
 │   │   ├── simple.py        # 2/4, 3/4, 4/4 presets
 │   │   └── compound.py      # 6/8, 9/8, 12/8 presets
-│   └── api.py                # FastAPI app (/health, /analyze, /arrange, /suite, /merge, /compress, /midi)
-│                             # Also accepts .abc files (music21 parses natively)
+│   │
+│   ├── auth/                # authentication subsystem
+│   │   ├── routes.py        # /auth/* endpoints (register, login, verify-email, reset-password)
+│   │   ├── dependencies.py  # get_current_user / get_current_user_optional
+│   │   ├── security.py      # JWT, bcrypt, token helpers
+│   │   ├── schemas.py       # Pydantic request/response models
+│   │   ├── email.py         # transactional email via Brevo
+│   │   └── limiter.py       # slowapi rate-limiter instance
+│   │
+│   ├── works/               # saved arrangements subsystem
+│   │   ├── routes.py        # /works/* endpoints (list, get, rename, delete)
+│   │   └── schemas.py       # WorkSummary, WorkDetail, WorkRename, WorksPage
+│   │
+│   └── db/                  # database layer
+│       ├── models.py        # SQLAlchemy ORM models (User, Work, tokens)
+│       ├── session.py       # engine + get_db dependency
+│       └── works.py         # CRUD helpers for saved works
 │
 ├── frontend/                 # React + Vite + TypeScript app
 │   └── src/
-│       ├── api/              # typed client + types
+│       ├── api/              # typed API client + request/response types
 │       ├── components/
-│       │   ├── AbcEditor.tsx # ABC notation editor (toolbar + abcjs live preview)
-│       │   ├── FlatEmbedEditor.tsx
-│       │   └── ...           # FileDropzone, SheetViewer, MidiPlayer, ...
-│       ├── hooks/            # useAnalysis, useArrangement
+│       │   ├── AbcEditor.tsx    # ABC notation editor (toolbar + abcjs live preview)
+│       │   ├── AbcPaper.tsx     # read-only abcjs sheet view
+│       │   ├── AnalysisPanel.tsx
+│       │   ├── AuthContext.tsx   # React auth context + provider
+│       │   ├── DownloadBar.tsx
+│       │   ├── FileDropzone.tsx
+│       │   ├── GeneratePanel.tsx
+│       │   ├── MidiPlayer.tsx
+│       │   ├── Navbar.tsx
+│       │   ├── ProtectedRoute.tsx
+│       │   ├── SectionList.tsx
+│       │   └── ui/              # Card, Spinner, ErrorBoundary
+│       ├── hooks/
+│       │   ├── useAnalysis.ts
+│       │   ├── useArrangement.ts
+│       │   ├── useAuth.ts
+│       │   ├── useInputSource.ts
+│       │   └── useMidiPreview.ts
+│       ├── pages/
+│       │   ├── HomePage.tsx
+│       │   ├── HowPage.tsx
+│       │   ├── MyWorksPage.tsx      # saved works with search + pagination
+│       │   ├── LoginPage.tsx
+│       │   ├── RegisterPage.tsx
+│       │   ├── ForgotPasswordPage.tsx
+│       │   ├── ResetPasswordPage.tsx
+│       │   └── VerifyEmailPage.tsx
 │       └── lib/              # music helpers, download utilities
 │
 ├── docs/
@@ -225,9 +282,12 @@ The dataset is collected from publicly available Christian choral music (**noty-
 - [x] Dataset collected & prepared (732 pairs from 222 source songs)
 - [x] Music Transformer trained as a documented research baseline
 - [x] FastAPI backend for the rule-based engine
-- [x] React + Vite frontend (upload, in-browser editor, sheet + MIDI, download)
+- [x] React + Vite frontend (upload, ABC editor, sheet + MIDI, download)
 - [x] Frontend API client reconciled with backend endpoints
 - [x] ABC notation editor with live preview, note/chord toolbar, and `.abc` backend support
+- [x] ABC export — convert any arrangement back to ABC notation
+- [x] User authentication (register, email verification, login, password reset via Brevo)
+- [x] Saved works library with full-text search and pagination (My Works)
 - [ ] Deployment (Docker config drafted for dev, production deploy not yet set up)
 - [ ] Add a `LICENSE` file matching the badge above
 - [ ] Style parameters for instruments beyond bayan (long-term)

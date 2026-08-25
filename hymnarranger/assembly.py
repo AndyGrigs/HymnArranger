@@ -220,29 +220,10 @@ def arrange_multi(source, presets: Optional[List[str]] = None,
     return sc
 
 
-def to_abc_string(sc: stream.Score) -> str:
-    """Convert a music21 Score to ABC notation for abcjs rendering.
-
-    For two-part (treble + bass) scores, inserts a %%score directive so
-    abcjs renders them as a grand staff instead of two separate systems.
-    """
-    import re, tempfile, os
-    fd, path = tempfile.mkstemp(suffix='.abc')
-    os.close(fd)
-    try:
-        sc.write('abc', fp=path)
-        with open(path, encoding='utf-8') as f:
-            abc = f.read()
-    finally:
-        os.unlink(path)
-
-    # Detect voice IDs emitted by music21 (e.g. "1", "2", "V1", …)
-    voice_ids = list(dict.fromkeys(re.findall(r'^V:(\S+)', abc, re.MULTILINE)))
-    if len(voice_ids) >= 2 and '%%score' not in abc:
-        score_line = '%%score {' + ' | '.join(voice_ids) + '}'
-        abc = re.sub(r'^(V:\S)', score_line + '\n\\1', abc, count=1, flags=re.MULTILINE)
-
-    return abc
+def to_abc_string(sc: stream.Score, title: str = 'HymnArranger') -> str:
+    """Партитура → ABC. Реалізація в abcexport: music21 не має ABC-райтера."""
+    from .abcexport import score_to_abc
+    return score_to_abc(sc, title=title)
 
 
 def to_musicxml_string(sc: stream.Score) -> str:

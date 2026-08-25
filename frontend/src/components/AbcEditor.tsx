@@ -161,7 +161,6 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
   useEffect(() => {
     const editor = new abcjs.Editor(textareaId, {
       paper_id: paperId,
-      generate_warnings: true,
       abcjsParams: {
         responsive: 'resize',
         dragging: true,
@@ -174,21 +173,25 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
       },
     })
     editorRef.current = editor
-    return () => { editorRef.current = null }
+    return () => {
+      editorRef.current = null
+      document.getElementById(paperId)?.replaceChildren()
+    }
   }, [textareaId, paperId])
 
   useEffect(() => {
     onReady?.(() => textareaRef.current?.value ?? '')
   }, [onReady])
 
-  // When the textarea isn't focused, snap cursor to just before the final |]
-  // so toolbar insertions land in the body, not inside the ABC header.
+  // When the textarea isn't focused, snap cursor to just before the final
+  // barline (|] or plain |) so toolbar insertions land in the body, not
+  // inside the ABC header.
   function ensureFocus() {
     const ta = textareaRef.current
     if (!ta) return
     if (document.activeElement === ta) return
-    const finalBar = ta.value.lastIndexOf('|]')
-    const pos = finalBar >= 0 ? finalBar : ta.value.length
+    const m = ta.value.match(/\|\]?\s*$/)
+    const pos = m ? m.index! : ta.value.length
     ta.focus()
     ta.setSelectionRange(pos, pos)
   }
@@ -267,7 +270,15 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
     if (octave === 1) p = p.toLowerCase()
     if (octave === 2) p = p.toLowerCase() + "'"
     const prefix = armedChord ? `"${armedChord}"` : ''
-    insertAtCursor(prefix + accidental + p + activeSuffix)
+
+    // Ensure a separating space before the note, otherwise consecutive
+    // insertions run together into one unparsable token (e.g. CC"Dm"DD).
+    ensureFocus()
+    const ta = textareaRef.current
+    const before = ta && ta.selectionStart > 0 ? ta.value[ta.selectionStart - 1] : ''
+    const needsSpace = before !== '' && before !== ' ' && before !== '|'
+
+    insertAtCursor((needsSpace ? ' ' : '') + prefix + accidental + p + activeSuffix)
     setAccidental('')
     if (armedChord) setArmedChord(null)
   }

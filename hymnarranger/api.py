@@ -55,6 +55,12 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
+if os.getenv('ALLOWED_HOSTS') is None:
+    logger.warning(
+        'ALLOWED_HOSTS не задано — діє дефолт %s. '
+        'У проді це поверне 400 на всі запити.', ALLOWED_HOSTS
+    )
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

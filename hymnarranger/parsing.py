@@ -105,7 +105,7 @@ def parse_input(source) -> ArrangeContext:
             pickup_ql = bar_ql - m0.paddingLeft
         elif filled > 0 and filled < bar_ql - 1e-6:
             pickup_ql = filled
-        elif m0.number == 0:
+        elif m0.number == 0 and filled < bar_ql - 1e-6:
             pickup_ql = filled
 
     if measures:

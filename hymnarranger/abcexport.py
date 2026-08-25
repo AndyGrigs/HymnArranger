@@ -216,16 +216,18 @@ def measure_to_abc(m: stream.Measure, sharps: int, voice_id: Optional[str] = Non
     measure_state: Dict[Tuple[str, int], int] = {}
     tokens: List[str] = []
 
-    mark = m.getElementsByClass(expressions.RehearsalMark).first() if with_marks else None
-    if mark is not None and mark.content:
-        # Репетиційна позначка в ABC — це анотація над нотою.
-        tokens.append(f'"^{mark.content}"')
-
     if with_marks:
         mm = m.getElementsByClass(tempo.MetronomeMark).first()
         if mm is not None and mm.number:
             ref = Fraction(mm.referent.quarterLength).limit_denominator(16) / 4
             tokens.append(f'[Q:{ref.numerator}/{ref.denominator}={int(mm.number)}]')
+
+    mark = m.getElementsByClass(expressions.RehearsalMark).first() if with_marks else None
+    if mark is not None and mark.content:
+        # Репетиційна позначка в ABC — це анотація над нотою.
+        # Має йти ПІСЛЯ [Q:...]: якщо анотація перед inline-полем,
+        # abcjs читає '[' анотації як початок акорду ("Expected ']'...").
+        tokens.append(f'"^{mark.content}"')
 
     voices = list(m.getElementsByClass(stream.Voice))
     if voice_id is not None:

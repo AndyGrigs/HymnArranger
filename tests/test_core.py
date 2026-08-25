@@ -7,6 +7,7 @@ stateless helpers that take music21 objects and return music21 objects.
 from music21 import harmony, key, pitch
 
 from hymnarranger.meters import parts_for
+from hymnarranger.parsing import parse_input
 from hymnarranger.theory import _approach_tone, _chord_tones_near, _step, _steps_between
 
 # ── _step ─────────────────────────────────────────────────────────────────────
@@ -136,6 +137,19 @@ def test_parts_for_dotted_quarter_into_eighths():
 
 def test_parts_for_cap_is_respected():
     assert parts_for(4.0, 0.5, 3) <= 3
+
+
+# ── parse_input: ЗАТАКТ ──────────────────────────────────────────────────────
+
+def test_full_first_measure_is_not_treated_as_pickup(tmp_path):
+    # music21's ABC importer numbers the first measure 0 even when it's
+    # full — that used to be misread as a pickup, silencing the left hand
+    # (and its chords) for the whole first bar.
+    p = tmp_path / 'full_bars.abc'
+    p.write_text('X:1\nT:t\nM:4/4\nL:1/8\nK:C\n"C"CDEF GABc|"Dm"cBAG FEDC|]',
+                 encoding='utf-8')
+    ctx = parse_input(str(p))
+    assert ctx.pickup_ql == 0.0
 
 
 def test_parts_for_result_is_always_a_notatable_duration():

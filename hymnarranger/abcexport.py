@@ -205,7 +205,7 @@ def _left_repeat(m: stream.Measure) -> str:
 
 
 def measure_to_abc(m: stream.Measure, sharps: int, voice_id: Optional[str] = None,
-                   with_marks: bool = True) -> str:
+                   with_marks: bool = True, beat_ql: float = 1.0) -> str:
     """Один такт однієї партії → рядок ABC (без завершальної риски).
 
     Якщо в такті є music21-голоси (`stream.Voice`) — беремо той, чий id
@@ -259,12 +259,24 @@ def measure_to_abc(m: stream.Measure, sharps: int, voice_id: Optional[str] = Non
             if fig:
                 symbols.setdefault(round(float(cs.offset), 4), fig)
 
+    prev_beat = None
     for el in sorted(elements, key=lambda e: e.offset):
         piece = element_to_abc(el, sharps, measure_state)
         if not piece:
             continue
         fig = symbols.pop(round(float(el.offset), 4), None)
-        tokens.append(f'"{fig}"{piece}' if fig else piece)
+        if fig:
+            # Акордовий символ приклеюємо до ноти, а не виносимо окремим
+            # токеном: "Dm"DD в одній в'язці — без попереджень парсера,
+            # "Dm" DD (з пробілом) розриває в'язку.
+            piece = f'"{fig}"' + piece
+
+        beat = int(float(el.offset) / beat_ql + 1e-6) if beat_ql > 0 else 0
+        if tokens and beat == prev_beat:
+            tokens[-1] = tokens[-1] + piece
+        else:
+            tokens.append(piece)
+        prev_beat = beat
 
     return _left_repeat(m) + ' '.join(tokens)
 
@@ -309,6 +321,17 @@ def _key_signature(sc: stream.Score) -> Tuple[int, str]:
 def _meter_string(sc: stream.Score) -> str:
     ts = sc.recurse().getElementsByClass(meter.TimeSignature).first()
     return ts.ratioString if ts is not None else '4/4'
+
+
+def _beat_ql(sc: stream.Score) -> float:
+    """Тривалість долі (у чвертках) — визначає групування нот у в'язки.
+
+    music21 сам розрізняє прості й складні розміри: 4/4 → 1.0, 6/8 → 1.5
+    (доля — чвертка з крапкою). Ноти в межах однієї долі друкуються без
+    пробілу, як окрема в'язка.
+    """
+    ts = sc.recurse().getElementsByClass(meter.TimeSignature).first()
+    return float(ts.beatDuration.quarterLength) if ts else 1.0
 
 
 def _tempo_line(sc: stream.Score) -> str:
@@ -372,6 +395,7 @@ def score_to_abc(sc: stream.Score, title: str = 'HymnArranger') -> str:
         return build_header(sc, title, [('1', 'treble')])
 
     sharps, _ = _key_signature(sc)
+    beat_ql = _beat_ql(sc)
 
     # (id голосу, ключ, такти партії, який music21-Voice брати)
     # Голоси шукаємо ПО ВСІХ тактах, а не лише по першому: у сюїті
@@ -418,7 +442,8 @@ def score_to_abc(sc: stream.Score, title: str = 'HymnArranger') -> str:
                 m = measures[i]
                 # Репетиційну позначку друкуємо лише над найвищим голосом,
                 # інакше вона дублюється на кожному нотоносці.
-                chunk.append(measure_to_abc(m, sharps, inner_id, with_marks=(pos == 0)))
+                chunk.append(measure_to_abc(m, sharps, inner_id, with_marks=(pos == 0),
+                                            beat_ql=beat_ql))
                 chunk.append(_right_barline(m))
             if chunk:
                 body.append(f'[V:{vid}] ' + ' '.join(chunk))

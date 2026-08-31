@@ -487,10 +487,10 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
   }
 
   const btn = (active: boolean) =>
-    `rounded border px-2 py-1 text-sm transition ${
+    `rounded-[7px] border px-2 py-1 text-sm transition ${
       active
-        ? 'border-accent/40 bg-accent/10 font-medium text-accent'
-        : 'border-ink/15 bg-white text-ink/70 hover:bg-ink/5 hover:text-ink'
+        ? 'border-accent/40 bg-tint font-medium text-accent'
+        : 'border-[#dcdad2] bg-white text-[#454a52] hover:border-[#b6bac2] hover:text-ink'
     }`
 
   // A plain button click blurs the textarea by default, which drops its
@@ -501,36 +501,36 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
   return (
     <div className="space-y-2">
       {/* Рядок 0: тональність + розмір + лічильник тактів + відтворення */}
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-ink/10 bg-ink/2 px-3 py-2">
-        <span className="text-xs text-muted">Тон</span>
+      <div className="flex flex-wrap items-center gap-2.5 rounded-[10px] border border-[#ecebe6] bg-[#faf9f6] px-3.5 py-2.25">
+        <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Тон</span>
         <select
           defaultValue="C"
           onChange={(e) => setHeaderField('K', e.target.value)}
-          className="rounded border border-ink/15 bg-white px-2 py-1 text-sm text-ink/80"
+          className="rounded-[7px] border border-[#dcdad2] bg-white px-2 py-1.25 text-[13px] text-ink"
         >
           {KEY_PRESETS.map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
-        <span className="text-xs text-muted">Розмір</span>
+        <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Розмір</span>
         <select
           defaultValue="4/4"
           onChange={(e) => setHeaderField('M', e.target.value)}
-          className="rounded border border-ink/15 bg-white px-2 py-1 text-sm text-ink/80"
+          className="rounded-[7px] border border-[#dcdad2] bg-white px-2 py-1.25 text-[13px] text-ink"
         >
           {METER_PRESETS.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-3">
           {barCount > 0 && (
-            <span className="text-xs text-muted">{barCount} тактів</span>
+            <span className="font-mono text-[11px] text-[#8a9099]">{barCount} тактів</span>
           )}
           <button
             type="button"
             onClick={togglePlay}
             disabled={playState === 'loading'}
             {...noStealFocus}
-            className={`rounded border px-3 py-1 text-sm font-medium transition disabled:opacity-60 ${
+            className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.25 pl-2.75 text-[13px] font-medium transition disabled:opacity-60 ${
               playState === 'playing'
                 ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
-                : 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'
+                : 'border-[#dcdad2] bg-white text-ink hover:border-accent hover:text-accent'
             }`}
           >
             {playState === 'playing' ? '■ Стоп' : playState === 'loading' ? '… Готую звук' : '▶ Прослухати'}
@@ -539,8 +539,8 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
       </div>
 
       {/* Рядок 1: тривалість + крапка + акциденції + октава + пауза + такт + ліґатура */}
-      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-ink/10 bg-ink/2 px-3 py-2">
-        <span className="w-16 shrink-0 text-xs text-muted">Тривалість</span>
+      <div className="flex flex-wrap items-center gap-1.5 rounded-[10px] border border-[#ecebe6] bg-[#faf9f6] px-3.5 py-2.25">
+        <span className="w-19.5 shrink-0 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Тривал.</span>
         {DURATIONS.map((d) => (
           <button key={d} type="button" onClick={() => setDuration(d)} {...noStealFocus} className={btn(duration === d)}>
             {DURATION_LABEL[d]}
@@ -555,7 +555,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
         >
           ·
         </button>
-        <span className="mx-1 select-none text-ink/20">|</span>
+        <span className="mx-2 block h-5 w-px bg-[#e3e1da]" />
         <button
           type="button"
           onClick={() => clickedRef.current ? applyAccidental('^') : setAccidental('^')}
@@ -580,11 +580,11 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
         >
           ♮
         </button>
-        <span className="mx-1 select-none text-ink/20">|</span>
+        <span className="mx-2 block h-5 w-px bg-[#e3e1da]" />
         <button type="button" onClick={() => setOctave((o) => Math.max(o - 1, -1))} {...noStealFocus} className={btn(false)}>Oct ↓</button>
-        <span className="w-5 text-center text-xs font-mono text-muted">{octaveLabel}</span>
+        <span className="w-5 text-center font-mono text-xs text-[#8a9099]">{octaveLabel}</span>
         <button type="button" onClick={() => setOctave((o) => Math.min(o + 1, 2))} {...noStealFocus} className={btn(false)}>Oct ↑</button>
-        <span className="mx-1 select-none text-ink/20">|</span>
+        <span className="mx-2 block h-5 w-px bg-[#e3e1da]" />
         <button type="button" onClick={() => insertAtCursor('z' + activeSuffix)} {...noStealFocus} className={btn(false)}>
           Пауза
         </button>
@@ -608,15 +608,15 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
       </div>
 
       {/* Рядок 2: ноти */}
-      <div className="flex items-center gap-1.5 rounded-lg border border-ink/10 bg-ink/2 px-3 py-2">
-        <span className="w-16 shrink-0 text-xs text-muted">Нота</span>
+      <div className="flex items-center gap-1.5 rounded-[10px] border border-[#ecebe6] bg-[#faf9f6] px-3.5 py-2.25">
+        <span className="w-19.5 shrink-0 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Нота</span>
         {PITCHES.map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => insertNote(p)}
             {...noStealFocus}
-            className="h-9 w-9 rounded border border-ink/15 bg-white text-sm font-semibold text-ink/80 transition hover:border-accent/40 hover:bg-accent/5 hover:text-accent"
+            className="h-9 w-9 rounded-lg border border-[#dcdad2] bg-white font-display text-[19px] font-semibold text-ink transition hover:border-accent hover:bg-tint hover:text-accent"
           >
             {p}
           </button>
@@ -629,32 +629,32 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
       </div>
 
       {/* Рядок 3: акорди */}
-      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-ink/10 bg-ink/2 px-3 py-2">
-        <span className="w-16 shrink-0 text-xs text-muted">Акорд</span>
+      <div className="flex flex-wrap items-center gap-1.5 rounded-[10px] border border-[#ecebe6] bg-[#faf9f6] px-3.5 py-2.25">
+        <span className="w-19.5 shrink-0 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Акорд</span>
         <select
           value={chordRoot}
           onChange={(e) => setChordRoot(e.target.value)}
-          className="rounded border border-ink/15 bg-white px-2 py-1 text-sm text-ink/80"
+          className="rounded-[7px] border border-[#dcdad2] bg-white px-2 py-1.25 text-[13px] text-ink"
         >
           {CHORD_ROOTS.map((r) => <option key={r}>{r}</option>)}
         </select>
         <select
           value={chordQuality}
           onChange={(e) => setChordQuality(e.target.value)}
-          className="rounded border border-ink/15 bg-white px-2 py-1 text-sm text-ink/80"
+          className="rounded-[7px] border border-[#dcdad2] bg-white px-2 py-1.25 text-[13px] text-ink"
         >
           {CHORD_QUALITIES.map((q) => (
             <option key={q.label} value={q.suffix}>{q.label}</option>
           ))}
         </select>
-        <button
+        {/* <button
           type="button"
           onClick={() => setArmedChord(composedChord)}
           {...noStealFocus}
           className={btn(armedChord !== null)}
         >
           {armedChord ? `✓ "${armedChord}" → виділена нота` : `"${composedChord}" до виділеної ноти`}
-        </button>
+        </button> */}
         {armedChord && (
           <button type="button" onClick={() => setArmedChord(null)} {...noStealFocus} className={btn(false)}>✕</button>
         )}
@@ -683,9 +683,9 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
           defaultValue={initialAbc}
           spellCheck={false}
           onKeyDown={() => { clickedRef.current = null }}
-          className="h-64 resize-none rounded-lg border border-ink/15 bg-white p-2.5 font-mono text-xs leading-relaxed text-ink/80 focus:border-accent/40 focus:outline-none"
+          className="h-59 resize-none rounded-[10px] border border-[#dcdad2] bg-white p-3 font-mono text-xs leading-[1.75] text-[#3a3f47] outline-none focus:border-accent"
         />
-        <div className="overflow-auto rounded-lg border border-ink/10 bg-white p-2">
+        <div className="ha-score overflow-auto rounded-[10px] border border-parchment-edge bg-parchment p-3 px-3.5">
           <div id={paperId} />
         </div>
       </div>

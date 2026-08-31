@@ -1,11 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #1a1212;
-  --color-paper: #f4eae4;
-  --color-accent: #8b1c35;
-  --color-muted: #7a6060;
-  --font-display: "Georgia", "Times New Roman", serif;
+  --color-ink: #1c1e22;
+  --color-paper: #f6f5f1;
+  --color-accent: #2f3b6b;
+  --color-muted: #5a6068;
+  --color-tint: #eef0f7;
+  --color-parchment: #fbf7ee;
+  --color-parchment-edge: #e7dfcd;
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 html, body, #root {
@@ -15,5 +19,17 @@ html, body, #root {
 body {
   background-color: var(--color-paper);
   color: var(--color-ink);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.ha-score svg path,
+.ha-score svg text {
+  fill: #22252b;
+}
+
+.ha-score svg .abcjs-note_selected path,
+.ha-score svg .abcjs-note_selected use,
+.ha-score svg .abcjs-note_selected text {
+  fill: #e53e3e;
 }

@@ -78,7 +78,6 @@ export function HomePage() {
     abcGetRef.current = getAbc
   }, [abcGetRef])
 
-  // On mount: restore a saved work from MyWorksPage navigation state
   useEffect(() => {
     const state = resumeRef.current
     if (!state?.resumeAbc) return
@@ -119,33 +118,36 @@ export function HomePage() {
       <Hero />
 
       {/* ── Input card ──────────────────────────────────────────── */}
-      <div className="relative z-10 mx-auto -mt-4 max-w-6xl px-3 sm:px-6">
-        <div className="overflow-hidden rounded-2xl border border-ink/5 bg-white shadow-xl">
-          {/* Input mode tabs */}
-          <div className="flex border-b border-ink/10">
-            {INPUT_TABS.map(({ id, label }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setInputMode(id)}
-                className={`px-6 py-3.5 text-sm font-medium transition ${
-                  inputMode === id
-                    ? 'border-b-2 border-accent text-accent'
-                    : 'text-muted hover:text-ink'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+      <section className="mx-auto max-w-7xl px-8 pt-10">
+        <div className="overflow-hidden rounded-[14px] border border-[#e3e1da] bg-white">
+
+          {/* Card header: title + segmented tab control */}
+          <div className="flex items-center gap-4 border-b border-[#ecebe6] px-5.5 py-4">
+            <h2 className="font-display text-2xl font-semibold text-ink">Мелодія</h2>
+            <div className="ml-auto flex gap-1 rounded-[9px] border border-[#e3e1da] bg-[#f8f7f4] p-0.75">
+              {INPUT_TABS.map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setInputMode(id)}
+                  className={`rounded-md px-3.5 py-1.5 text-[13px] font-medium transition ${
+                    inputMode === id
+                      ? 'bg-white text-accent shadow-sm'
+                      : 'bg-transparent text-[#767c86]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto]">
             {/* Left — input content */}
-            <div className={`border-b border-ink/10 md:border-b-0 md:border-r ${
-              inputMode === 'abc' ? 'p-4' : 'p-6'
+            <div className={`border-b border-[#ecebe6] md:border-b-0 md:border-r ${
+              inputMode === 'abc' ? 'px-5.5 py-4.5' : 'p-5.5'
             }`}>
 
-              {/* File upload */}
               {inputMode === 'upload' && (
                 <FileDropzone
                   onFile={handleFile}
@@ -156,9 +158,8 @@ export function HomePage() {
                 />
               )}
 
-              {/* ABC notation editor */}
               {inputMode === 'abc' && (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <Suspense fallback={<div className="flex justify-center py-8"><Spinner /></div>}>
                     <AbcEditor
                       key={resumedAbc ?? 'new'}
@@ -170,7 +171,7 @@ export function HomePage() {
                     type="button"
                     onClick={handleAnalyzeFromAbc}
                     disabled={analysis.loading}
-                    className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-[9px] border border-accent bg-white px-4 py-2.5 text-[13.5px] font-medium text-accent transition hover:bg-tint disabled:opacity-50"
                   >
                     {analysis.loading ? <Spinner /> : <Check className="h-4 w-4" />}
                     {analysis.loading ? 'Аналізую…' : 'Взяти ноти з редактора'}
@@ -180,9 +181,14 @@ export function HomePage() {
             </div>
 
             {/* Right — Settings */}
-            <div className="w-full p-5 sm:p-6 md:w-72 md:shrink-0">
-              <h3 className="font-semibold text-accent">Налаштування</h3>
-              <div className="mt-4">
+            <div className="w-full p-5.5 md:w-79 md:shrink-0">
+              <h2 className="font-display text-2xl font-semibold text-ink">Налаштування</h2>
+              {analysis.analysis && (
+                <p className="mt-1 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">
+                  Розмір {analysis.analysis.meter} · тональність {analysis.analysis.key}
+                </p>
+              )}
+              <div className="mt-4.5">
                 {analysis.analysis ? (
                   <GeneratePanel
                     bare
@@ -207,22 +213,22 @@ export function HomePage() {
                   <button
                     type="button"
                     disabled
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-semibold text-white opacity-40"
+                    className="flex w-full items-center justify-center gap-2 rounded-[10px] bg-accent py-3 text-sm font-medium text-white opacity-40"
                   >
                     <Music className="h-4 w-4" />
-                    Створити партитуру
+                    Аранжувати
                   </button>
                 )}
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ── Errors ──────────────────────────────────────────────── */}
       {(analysis.error || arrangement.error) && (
-        <div className="mx-auto mt-4 max-w-6xl px-6">
-          <div className="rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-accent">
+        <div className="mx-auto mt-4 max-w-7xl px-8">
+          <div className="rounded-xl border border-accent/30 bg-tint/50 px-4 py-3 text-sm text-accent">
             {analysis.error || arrangement.error}
           </div>
         </div>
@@ -230,105 +236,120 @@ export function HomePage() {
 
       {/* ── Results ─────────────────────────────────────────────── */}
       {arrangement.result && (
-        <div className="mx-auto mt-6 max-w-6xl px-3 pb-12 sm:mt-8 sm:px-6 sm:pb-16">
-          <div className="overflow-hidden rounded-2xl border border-ink/5 bg-white shadow-xl">
-            {/* Mobile: horizontal tab bar */}
-            <div className="flex overflow-x-auto border-b border-ink/10 md:hidden">
-              {SIDEBAR_TABS.map(({ id, Icon, label }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setActiveTab(id)}
-                  className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition ${
-                    activeTab === id
-                      ? 'border-accent text-accent'
-                      : 'border-transparent text-ink/55 hover:text-ink'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </button>
-              ))}
+        <section className="mx-auto mt-6 max-w-7xl px-8 pb-18">
+          <div className="overflow-hidden rounded-[14px] border border-[#e3e1da] bg-white">
+
+            {/* Results header */}
+            <div className="flex flex-wrap items-center gap-3.5 border-b border-[#ecebe6] px-6 py-4">
+              <h2 className="font-display text-[26px] font-semibold text-ink">
+                {arrangement.result.title}
+              </h2>
+              <span className="rounded-full border border-[#e3e1da] px-2.75 py-0.75 font-mono text-[10.5px] uppercase tracking-[.11em] text-[#8a9099]">
+                Попередній перегляд
+              </span>
+              <div className="ml-auto flex items-center gap-4.5">
+                <div className="flex items-center gap-2.5">
+                  {!midiReady && (
+                    <button
+                      type="button"
+                      onClick={handlePlayMidi}
+                      disabled={midiLoading}
+                      className="flex h-8.5 w-8.5 items-center justify-center rounded-full bg-accent text-white transition hover:brightness-110 disabled:opacity-50"
+                    >
+                      {midiLoading
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Play className="ml-0.5 h-3.5 w-3.5" />
+                      }
+                    </button>
+                  )}
+                  {/* Waveform decoration */}
+                  <span className="flex items-end gap-0.5 h-4">
+                    {[6, 12, 9, 15, 7, 11].map((h, i) => (
+                      <span key={i} className="block w-0.5 bg-[#d3d6dc]" style={{ height: h }} />
+                    ))}
+                  </span>
+                  <div ref={midiHostRef} className={midiReady ? 'min-w-55' : ''} />
+                </div>
+                {displayTempo != null && (
+                  <span className="font-mono text-[11.5px] uppercase tracking-widest text-[#8a9099]">
+                    {displayTempo} BPM
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="flex md:min-h-160">
-              {/* Desktop: vertical sidebar */}
-              <div className="hidden w-48 shrink-0 border-r border-ink/10 p-4 md:block">
-                <nav className="space-y-1">
+            <div className="flex md:min-h-150">
+              {/* Desktop sidebar */}
+              <div className="hidden w-49 shrink-0 border-r border-[#ecebe6] p-4 md:block">
+                <nav className="space-y-0.5">
                   {SIDEBAR_TABS.map(({ id, Icon, label }) => (
                     <button
                       key={id}
                       type="button"
                       onClick={() => setActiveTab(id)}
-                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+                      className={`flex w-full items-center gap-2.75 rounded-[9px] px-3 py-2.5 text-[13.5px] text-left transition ${
                         activeTab === id
-                          ? 'bg-accent/10 font-medium text-accent'
-                          : 'text-ink/55 hover:bg-ink/5 hover:text-ink'
+                          ? 'bg-tint font-semibold text-accent'
+                          : 'bg-transparent font-normal text-[#6b717a] hover:bg-ink/5'
                       }`}
                     >
-                      <Icon className="h-4 w-4 shrink-0" />
+                      <Icon className="h-3.75 w-3.75 shrink-0" />
                       {label}
                     </button>
                   ))}
                 </nav>
               </div>
 
-              {/* Content */}
-              <div className="flex min-w-0 flex-1 flex-col">
+              {/* Mobile tab bar */}
+              <div className="flex overflow-x-auto border-b border-[#ecebe6] md:hidden w-full">
+                {SIDEBAR_TABS.map(({ id, Icon, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setActiveTab(id)}
+                    className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition ${
+                      activeTab === id
+                        ? 'border-accent text-accent'
+                        : 'border-transparent text-[#6b717a] hover:text-ink'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Content area */}
+              <div className="flex min-w-0 flex-1 flex-col bg-[#fcfcfa]">
 
                 {/* ─ Партитура ─ */}
                 {activeTab === 'score' && (
-                  <>
-                    <div className="flex flex-wrap items-center gap-3 border-b border-ink/10 px-5 py-3">
-                      <span className="font-semibold text-ink/80">
-                        {arrangement.result.title}
-                      </span>
-                      <span className="rounded-full bg-ink/5 px-2.5 py-0.5 text-xs text-muted">
-                        Попередній перегляд
-                      </span>
-
-                      <div className="ml-auto flex flex-wrap items-center gap-4">
-                        {!midiReady && (
-                          <button
-                            type="button"
-                            onClick={handlePlayMidi}
-                            disabled={midiLoading}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white shadow transition hover:opacity-90 disabled:opacity-50"
-                          >
-                            {midiLoading
-                              ? <Loader2 className="h-4 w-4 animate-spin" />
-                              : <Play className="ml-0.5 h-4 w-4" />
-                            }
-                          </button>
-                        )}
-                        <div ref={midiHostRef} className={midiReady ? 'min-w-55' : ''} />
-
-                        {displayTempo != null && (
-                          <div className="flex items-center gap-1.5 text-sm">
-                            <span className="text-muted">BPM</span>
-                            <span className="font-medium">{displayTempo}</span>
-                          </div>
-                        )}
+                  <div className="flex-1 p-[26px_30px_34px]">
+                    {arrangement.result.abc ? (
+                      <div
+                        className="rounded-xl border border-parchment-edge bg-parchment"
+                        style={{
+                          padding: '34px 38px',
+                          boxShadow: '0 1px 2px rgba(28,30,34,.04),0 22px 44px -34px rgba(28,30,34,.4)',
+                        }}
+                      >
+                        <div className="ha-score">
+                          <Suspense fallback={<div className="flex justify-center py-12"><Spinner /></div>}>
+                            <AbcPaper abc={arrangement.result.abc} className="" />
+                          </Suspense>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="flex-1 p-4">
-                      {arrangement.result.abc ? (
-                        <Suspense fallback={<div className="flex justify-center py-12"><Spinner /></div>}>
-                          <AbcPaper abc={arrangement.result.abc} />
-                        </Suspense>
-                      ) : (
-                        <p className="text-sm text-muted">
-                          ABC-нотація недоступна для цього аранжування.
-                        </p>
-                      )}
-                    </div>
-                  </>
+                    ) : (
+                      <p className="text-sm text-muted">
+                        ABC-нотація недоступна для цього аранжування.
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {/* ─ Редактор ─ */}
                 {activeTab === 'editor' && (
-                  <div className="flex-1 p-5">
+                  <div className="flex-1 p-[24px_30px]">
                     {arrangement.result.abc ? (
                       <Suspense fallback={<div className="flex justify-center py-12"><Spinner /></div>}>
                         <AbcEditor
@@ -346,7 +367,7 @@ export function HomePage() {
 
                 {/* ─ Акорди ─ */}
                 {activeTab === 'chords' && (
-                  <div className="p-5 space-y-5">
+                  <div className="p-[26px_30px] space-y-5">
                     {analysis.analysis ? (
                       <>
                         <AnalysisPanel data={analysis.analysis} />
@@ -360,7 +381,7 @@ export function HomePage() {
 
                 {/* ─ Експорт ─ */}
                 {activeTab === 'export' && (
-                  <div className="p-5 space-y-5">
+                  <div className="p-[26px_30px] space-y-5">
                     <MidiPlayer
                       source={{ musicxml: arrangement.result.musicxml }}
                       resetKey={
@@ -379,7 +400,7 @@ export function HomePage() {
               </div>
             </div>
           </div>
-        </div>
+        </section>
       )}
     </>
   )

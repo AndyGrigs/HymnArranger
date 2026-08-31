@@ -30,7 +30,8 @@ const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: 'suite',  label: 'Тема з варіаціями', hint: "готова п'єса з дев'яти розділів"  },
   { id: 'preset', label: 'Одна фактура',       hint: 'конкретний пресет на весь гімн'  },
   { id: 'merge',  label: 'Порівняння',          hint: 'усі доступні пресети підряд'     },
-  { id: 'style',  label: 'Стиль Сакали',        hint: 'строфи, хроматичні зв\'язки, кода' },
+  // Тимчасово вимкнено — стильовий модуль потребує доопрацювання
+  // { id: 'style',  label: 'Стиль Сакали',        hint: 'строфи, хроматичні зв\'язки, кода' },
 ]
 
 export function GeneratePanel(props: Props) {

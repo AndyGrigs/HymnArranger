@@ -481,19 +481,14 @@ async def suite(request: Request,
         os.unlink(path)
 
 
-@app.post('/style')
+@app.post('/style', include_in_schema=False)
 async def style_arrange(request: Request,
                         style: str = Query('sakala'),
                         strophes: int = Query(5, ge=1, le=5),
                         coda: bool = Query(True),
                         download: bool = Query(False)):
-    """
-    Стильова обробка: строфи різної фактури, хроматичні зв'язки, кода.
-
-    На відміну від /suite, де кожен розділ незалежний, тут форма
-    цілісна — регістр наростає від строфи до строфи, а зв'язки
-    щоразу повертають до домінанти.
-    """
+    # Тимчасово вимкнено: стильовий модуль потребує доопрацювання
+    raise HTTPException(404, 'Стильова обробка тимчасово недоступна')
     path = await _read_source(request)
     try:
         try:
@@ -541,16 +536,16 @@ async def midi(request: Request,
         if raw:
             _validate_file(path)
             score = music21.converter.parse(path)
-        elif preset and preset.startswith('style:'):
-            try:
-                mod = styles.get(preset.split(':', 1)[1])
-            except KeyError as exc:
-                raise HTTPException(404, str(exc))
-            ctx = _context(path)
-            _check_measures(ctx)
-            score = await _run_sync(
-                functools.partial(mod.arrange_style, path, verbose=False)
-            )
+        # elif preset and preset.startswith('style:'):  # вимкнено разом з /style
+        #     try:
+        #         mod = styles.get(preset.split(':', 1)[1])
+        #     except KeyError as exc:
+        #         raise HTTPException(404, str(exc))
+        #     ctx = _context(path)
+        #     _check_measures(ctx)
+        #     score = await _run_sync(
+        #         functools.partial(mod.arrange_style, path, verbose=False)
+        #     )
         elif preset:
             ctx = _context(path)
             presets = meters.presets(ctx.ts)

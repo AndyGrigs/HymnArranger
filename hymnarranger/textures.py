@@ -274,11 +274,14 @@ def build_thirds_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Gene
     def candidates(bass_list, cs):
         """Висоти, що дають терцію/сексту до КОЖНОГО баса у вікні."""
         chord_pcs = {p.pitchClass for p in cs.pitches} if cs is not None else set()
+        key_pcs = {sp.pitchClass for sp in ctx.key.pitches}
         out = []
         for semis in CONSONANT:
             for octv in (0, 12, 24):
                 p = bass_list[0][2].transpose(semis + octv)
                 if p.midi < cfg.thirds_floor_midi or p.midi > cfg.rh_max_midi:
+                    continue
+                if p.pitchClass not in key_pcs:
                     continue
                 if all((p.midi - g[2].midi) % 12 in CONSONANT for g in bass_list):
                     out.append((0 if (not chord_pcs or p.pitchClass in chord_pcs) else 1, p))

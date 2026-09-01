@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { Navbar } from './components/Navbar'
+import { Footer } from './components/Footer'
 import { HowPage } from './pages/HowPage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
@@ -16,7 +17,7 @@ const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.H
 
 export default function App() {
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <Navbar />
       <Routes>
         <Route
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/works" element={<ProtectedRoute><MyWorksPage /></ProtectedRoute>} />
       </Routes>
+      <Footer />
     </div>
   )
 }

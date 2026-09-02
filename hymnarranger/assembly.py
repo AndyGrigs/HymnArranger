@@ -232,9 +232,35 @@ def to_musicxml_string(sc: stream.Score) -> str:
         GeneralObjectExporter(sc).parse().decode('utf-8'))
 
 
+def _separate_channels(mf) -> None:
+    """
+    music21 роздає MIDI-канали за номером програми, тому обидві руки
+    (обидві — акордеон, program 21) опиняються на каналі 1. Нота лівої
+    руки гасить однакову ноту правої. Розводимо треки по каналах вручну.
+    """
+    ch = 1
+    for tr in mf.tracks:
+        if not tr.getChannels():        # службовий трек темпу — пропускаємо
+            continue
+        if ch == 10:                    # 10-й зарезервований під ударні
+            ch = 11
+        for e in tr.events:
+            if e.channel is not None:
+                e.channel = ch
+        ch = min(ch + 1, 16)
+
+
 def midi_bytes(sc: stream.Score) -> bytes:
     from music21.midi.translate import streamToMidiFile
-    return streamToMidiFile(sc).writestr()
+    try:
+        # кожен Voice стає окремою партією -> окремим треком -> окремим
+        # каналом; інакше в two_voice_arp голоси гасять одне одного в унісонах
+        src = sc.voicesToParts()
+    except Exception:
+        src = sc
+    mf = streamToMidiFile(src)
+    _separate_channels(mf)
+    return mf.writestr()
 
 
 # =================================================================

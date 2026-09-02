@@ -121,6 +121,7 @@ export function GeneratePanel(props: Props) {
         </div>
       )}
 
+      {/* Тимчасово вимкнено — стильовий модуль потребує доопрацювання
       {mode === 'style' && (
         <div className="mt-5 space-y-3 border-t border-[#ecebe6] pt-4.5">
           <label className="block">
@@ -149,6 +150,7 @@ export function GeneratePanel(props: Props) {
           </label>
         </div>
       )}
+      */}
 
       <button
         type="button"

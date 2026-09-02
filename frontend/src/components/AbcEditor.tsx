@@ -7,11 +7,12 @@ import abcjs from 'abcjs'
 const GM_ACCORDION_PROGRAM = 21
 
 const DEFAULT_TUNE = `X:1
-T:Нова мелодія
-M:4/4
+T:Happy Birthday to You
+M:3/4
 L:1/8
 K:C
-CDEF GABc |]`
+"C"G3/2G1/2 A2 G2 | c2 "G7"B4 | G3/2G1/2 A2 G2 | d2 "C"c4 | G3/2G1/2 g2 e2 |c2 "F"B2 A2 | f3/2f1/2 "C"e2 c2 |"G"d2 "C"c4 |]
+w: Hap-py birth-day to you Hap-py birth-day to you Hap-py birth-day dear friend Hap-py birth-day to you`
 
 type Duration = 'whole' | 'half' | 'quarter' | 'eighth' | 'sixteenth'
 type Accidental = '' | '^' | '_' | '='

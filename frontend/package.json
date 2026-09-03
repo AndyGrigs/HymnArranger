@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "abcjs": "^6.7.0",
+    "framer-motion": "^13.2.0",
     "html-midi-player": "^1.6.0",
     "lucide-react": "^1.31.0",
     "react": "^18.3.1",

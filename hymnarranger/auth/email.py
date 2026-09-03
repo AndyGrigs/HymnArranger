@@ -29,7 +29,8 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
         subject="Відновлення паролю HymnArranger",
         html_content=f"""
             <p>Ви запросили відновлення паролю.</p>
-            <p><a href="{reset_link}">Натисніть тут, щоб встановити новий пароль</a></p>
+            <p>Щоб встановити новий пароль, скопіюйте це посилання в браузер:</p>
+            <p>{reset_link}</p>
             <p>Посилання дійсне 30 хвилин. Якщо це були не ви — просто проігноруйте цей лист.</p>
         """,
     )
@@ -51,7 +52,8 @@ def send_already_registered_email(to_email: str, login_link: str) -> None:
         html_content=f"""
             <p>Хтось (можливо, ви) спробував зареєструватись із цією адресою.</p>
             <p>Обліковий запис із такою поштою вже існує.</p>
-            <p><a href="{login_link}">Увійти до HymnArranger</a></p>
+            <p>Щоб увійти до HymnArranger, скопіюйте це посилання в браузер:</p>
+            <p>{login_link}</p>
             <p>Якщо це були не ви — просто проігноруйте цей лист.</p>
         """,
     )
@@ -72,7 +74,8 @@ def send_verification_email(to_email: str, verify_link: str) -> None:
         subject="Підтвердження пошти HymnArranger",
         html_content=f"""
             <p>Дякуємо за реєстрацію в HymnArranger.</p>
-            <p><a href="{verify_link}">Натисніть тут, щоб підтвердити пошту</a></p>
+            <p>Щоб підтвердити пошту, скопіюйте це посилання в браузер:</p>
+            <p>{verify_link}</p>
             <p>Посилання дійсне 24 години. Якщо це були не ви — просто проігноруйте цей лист.</p>
         """,
     )

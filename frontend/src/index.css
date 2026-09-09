@@ -33,3 +33,17 @@ body {
 .ha-score svg .abcjs-note_selected text {
   fill: #e53e3e;
 }
+
+/* OSMD створює окремий блок на кожен аркуш: osmdCanvasPage1, 2, 3…
+   За замовчуванням вони йдуть впритул і виглядають як суцільний блок,
+   тому оформлюємо їх як окремі сторінки. */
+[id^="osmdCanvasPage"] {
+  margin: 0 auto 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.08);
+  border-radius: 2px;
+}
+
+[id^="osmdCanvasPage"]:last-child {
+  margin-bottom: 0;
+}

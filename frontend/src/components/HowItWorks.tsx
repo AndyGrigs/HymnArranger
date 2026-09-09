@@ -34,7 +34,7 @@ interface Props {
 
 export function HowItWorks({ onStart }: Props) {
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-16 pt-10 sm:px-6 sm:pt-14">
+    <div className="mx-auto w-full max-w-5xl px-4 pb-16 pt-10 sm:px-6 sm:pt-14">
       <div className="max-w-2xl">
         <h1 className="font-display text-3xl font-bold leading-tight text-ink sm:text-4xl">
           Як це працює

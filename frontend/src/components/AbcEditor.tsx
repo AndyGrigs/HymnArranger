@@ -684,9 +684,9 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
           defaultValue={initialAbc}
           spellCheck={false}
           onKeyDown={() => { clickedRef.current = null }}
-          className="h-59 resize-none rounded-[10px] border border-[#dcdad2] bg-white p-3 font-mono text-xs leading-[1.75] text-[#3a3f47] outline-none focus:border-accent"
+          className="h-[28rem] resize-none rounded-[10px] border border-[#dcdad2] bg-white p-3 font-mono text-xs leading-[1.75] text-[#3a3f47] outline-none focus:border-accent"
         />
-        <div className="ha-score overflow-auto rounded-[10px] border border-parchment-edge bg-parchment p-3 px-3.5">
+        <div className="ha-score overflow-auto rounded-[10px] border border-parchment-edge bg-parchment p-3 px-3.5" style={{ height: '28rem' }}>
           <div id={paperId} />
         </div>
       </div>

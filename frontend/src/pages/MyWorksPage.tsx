@@ -146,7 +146,7 @@ export function MyWorksPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-12">
+    <div className="mx-auto w-full max-w-4xl px-6 py-12">
       <h1 className="font-display text-2xl font-bold text-ink">Мої роботи</h1>
 
       {/* Search */}

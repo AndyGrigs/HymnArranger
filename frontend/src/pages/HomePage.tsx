@@ -118,7 +118,7 @@ export function HomePage() {
       <Hero />
 
       {/* ── Input card ──────────────────────────────────────────── */}
-      <section className="mx-auto max-w-7xl px-8 pt-10">
+      <section className="mx-auto w-full max-w-7xl px-8 pt-10">
         <div className="overflow-hidden rounded-[14px] border border-[#e3e1da] bg-white">
 
           {/* Card header: title + segmented tab control */}
@@ -227,7 +227,7 @@ export function HomePage() {
 
       {/* ── Errors ──────────────────────────────────────────────── */}
       {(analysis.error || arrangement.error) && (
-        <div className="mx-auto mt-4 max-w-7xl px-8">
+        <div className="mx-auto mt-4 w-full max-w-7xl px-8">
           <div className="rounded-xl border border-accent/30 bg-tint/50 px-4 py-3 text-sm text-accent">
             {analysis.error || arrangement.error}
           </div>
@@ -236,7 +236,7 @@ export function HomePage() {
 
       {/* ── Results ─────────────────────────────────────────────── */}
       {arrangement.result && (
-        <section className="mx-auto mt-6 max-w-7xl px-8 pb-18">
+        <section className="mx-auto mt-6 w-full max-w-7xl px-8 pb-18">
           <div className="overflow-hidden rounded-[14px] border border-[#e3e1da] bg-white">
 
             {/* Results header */}

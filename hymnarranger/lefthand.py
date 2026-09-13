@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import math
+
 from typing import Optional, List
 
 from music21 import chord, harmony, key, meter, note, pitch
@@ -106,12 +108,13 @@ def build_left_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Genera
         r = note.Rest(); r.duration.quarterLength = ctx.pickup_ql; r.offset = 0.0
         out.append(r)
 
-    n_bars = max(1, int(round((ctx.total_ql - ctx.pickup_ql) / bar_ql)))
+    _end = ctx.music_end_ql
+    n_bars = max(1, math.ceil((_end - ctx.pickup_ql) / bar_ql - 1e-6))
     for bar in range(n_bars):
         bar_off = ctx.pickup_ql + bar * bar_ql
         for i, role in enumerate(pattern):
             off = bar_off + i * beat_ql
-            if off >= ctx.total_ql - 1e-6:
+            if off >= _end - 1e-6:
                 break
             cs = ctx.chord_at(off)
             if ctx.in_pickup(off) or cs is None:

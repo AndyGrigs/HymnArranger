@@ -34,6 +34,18 @@ class ArrangeContext:
     chord_source: str = 'harmony'        # 'harmony' | 'text' | 'lyrics' | 'none'
     pickup_ql: float = 0.0               # довжина затакту; 0 = затакту немає
 
+    @property
+    def music_end_ql(self) -> float:
+        """Фактичний кінець мелодії (без добивання до тактової сітки).
+
+        `total_ql` округлений угору до межі такту, тож у творі із затактом
+        він більший за реальний кінець рівно на довжину затакту: останній
+        такт комплементарний — неповний саме на затакт. Акомпанемент має
+        зупинятися тут, інакше ліва рука довша за праву на цілу долю.
+        """
+        end = max((e.offset + e.ql for e in self.events), default=0.0)
+        return end if end > 1e-6 else self.total_ql
+
     def in_pickup(self, offset: float) -> bool:
         return offset < self.pickup_ql - 1e-6
 

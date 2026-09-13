@@ -220,7 +220,7 @@ def build_two_voice_arp(ctx: ArrangeContext, cfg: ArrangeConfig):
 
     voice_arp = []
     off = 0.0
-    while off < ctx.total_ql - 1e-6:
+    while off < ctx.music_end_ql - 1e-6:
         ev = sounding(off)
         if ev is None or ev.is_rest or ctx.in_pickup(off):
             r = note.Rest(); r.duration.quarterLength = beat_ql; r.offset = off
@@ -294,11 +294,11 @@ def build_thirds_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Gene
     prev = None
     off = beat_ql
     first = True
-    while off < ctx.total_ql - 1e-6:
+    while off < ctx.music_end_ql - 1e-6:
         # тривалість супроводу задана В ДОЛЯХ: 2 долі = 2.0 у простих
         # розмірах і 3.0 у тридольних, тобто цілий такт 6/8
         hold = cfg.thirds_note_beats * beat_ql
-        dur = min(beat_ql if first else hold, ctx.total_ql - off)
+        dur = min(beat_ql if first else hold, ctx.music_end_ql - off)
 
         # Якщо під витриманою нотою бас змінюється так, що спільної
         # терції/сексти не існує, КОРОТШАЄМО ноту до зміни баса.

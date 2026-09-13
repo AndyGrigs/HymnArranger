@@ -15,14 +15,12 @@ const ACCOUNT_COL: { label: string; to?: string }[] = [
 
 function StaveIcon() {
   return (
-    <span
-      className="flex h-7 w-7 flex-col justify-between rounded-md border border-accent"
-      style={{ padding: '5px 4px' }}
-    >
-      {[0, 1, 2, 3, 4].map((i) => (
-        <span key={i} className={`block h-px bg-accent ${i === 2 ? '' : 'opacity-50'}`} />
-      ))}
-    </span>
+    <img
+      src="/icons/accordion.svg"
+      alt="Баян"
+      title="Ілюстрація: Zero Gravity, CC BY-SA 3.0, через Wikimedia Commons"
+      className="h-8 w-auto shrink-0 object-contain"
+    />
   )
 }
 

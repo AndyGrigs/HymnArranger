@@ -288,27 +288,34 @@ def measure_to_abc(m: stream.Measure, sharps: int, voice_id: Optional[str] = Non
 def _clef_for_part(part: stream.Part) -> str:
     """Ключ нотоносця.
 
-    Беремо явний ключ із партії, але звіряємо його з реальним діапазоном.
-    Причина: імпортер ABC у music21 рахує найкращий ключ РАЗОМ із
-    висотами акордових символів, а вони лежать низько — і мелодія
-    першої октави приїжджає з басовим ключем.
+    Явний ключ партії вважається авторитетним: партитуру складає
+    `assembly.py`, яке свідомо ставить TrebleClef правій руці й BassClef
+    лівій, і перевизначати це не можна.
+
+    Евристика по діапазону лишається тільки для СИРОЇ мелодії, імпортованої
+    з ABC. Там ключа насправді немає, і music21 вгадує його разом із
+    висотами акордових символів; ті лежать низько, тож мелодія першої
+    октави приїжджає з басовим ключем. Наявність `harmony.ChordSymbol`
+    і є ознакою такої сирої мелодії — у зібраних партіях їх нема.
     """
+    cl = part.recurse().getElementsByClass(clef.Clef).first()
+    if isinstance(cl, clef.AltoClef):
+        return 'alto'
+
+    has_chord_symbols = bool(part.recurse().getElementsByClass(harmony.ChordSymbol))
+    if cl is not None and not has_chord_symbols:
+        return 'bass' if isinstance(cl, clef.BassClef) else 'treble'
+
     pitches = [
         p
         for el in part.recurse().notes
         if not isinstance(el, harmony.ChordSymbol)
         for p in el.pitches
     ]
-    median_ps = sorted(p.ps for p in pitches)[len(pitches) // 2] if pitches else 60.0
-
-    cl = part.recurse().getElementsByClass(clef.Clef).first()
-    if isinstance(cl, clef.AltoClef):
-        return 'alto'
-    if isinstance(cl, clef.BassClef) and median_ps < 60:
-        return 'bass'
-    if cl is None or isinstance(cl, clef.BassClef):
-        return 'bass' if median_ps < 55 else 'treble'
-    return 'treble'
+    if not pitches:
+        return 'treble'
+    median_ps = sorted(p.ps for p in pitches)[len(pitches) // 2]
+    return 'bass' if median_ps < 55 else 'treble'
 
 
 def _key_signature(sc: stream.Score) -> Tuple[int, str]:

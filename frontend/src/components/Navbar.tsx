@@ -12,14 +12,12 @@ const NAV_LINKS: { id: string; label: string; to?: string }[] = [
 
 function StaveIcon() {
   return (
-    <span
-      className="flex h-7.5 w-7.5 flex-col justify-between rounded-md border border-accent"
-      style={{ padding: '6px 5px' }}
-    >
-      {[0, 1, 2, 3, 4].map((i) => (
-        <span key={i} className={`block h-px bg-accent ${i === 2 ? '' : 'opacity-50'}`} />
-      ))}
-    </span>
+    <img
+      src="/icons/accordion.svg"
+      alt="Баян"
+      title="Ілюстрація: Zero Gravity, CC BY-SA 3.0, через Wikimedia Commons"
+      className="h-9 w-auto shrink-0 object-contain"
+    />
   )
 }
 

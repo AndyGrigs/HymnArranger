@@ -101,6 +101,27 @@ export function Footer() {
             © {year} HymnArranger. Всі права захищені.
           </p>
           <p className="text-[12px] text-[#b3b7be]">
+            Іконка баяна:{' '}
+            <a
+              href="https://commons.wikimedia.org/wiki/File:Accordion_in_SVG_format_(vector).svg"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-accent"
+            >
+              Zero Gravity
+            </a>
+            ,{' '}
+            <a
+              href="https://creativecommons.org/licenses/by-sa/3.0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-accent"
+            >
+              CC BY-SA 3.0
+            </a>
+            , через Wikimedia Commons
+          </p>
+          <p className="text-[12px] text-[#b3b7be]">
             Зроблено з любов'ю до церковної музики
           </p>
         </div>

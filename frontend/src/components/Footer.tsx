@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 const NAV_COL: { label: string; to?: string }[] = [
   { label: 'Головна',      to: '/'    },
   { label: 'Як це працює', to: '/how' },
-  { label: 'Приклади'                 },
-  { label: 'Підтримка'                },
+  { label: 'Приклади',  to: '/examples' },
+  { label: 'Підтримка', to: '/support' },
 ]
 
 const ACCOUNT_COL: { label: string; to?: string }[] = [

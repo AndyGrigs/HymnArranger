@@ -11,6 +11,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { MyWorksPage } from './pages/MyWorksPage'
+import { SupportPage } from './pages/SupportPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Spinner } from './components/ui/Spinner'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/works" element={<ProtectedRoute><MyWorksPage /></ProtectedRoute>} />
+            <Route path="/support" element={<SupportPage />} />
           </Routes>
           <Footer />
         </motion.div>

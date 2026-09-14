@@ -25,6 +25,13 @@ export async function fetchExamples(): Promise<ExampleMeta[]> {
 }
 
 export async function fetchExampleXml(file: string): Promise<string> {
+  // .mxl — стиснений ZIP, OSMD сам завантажить і розпакує за URL
+  if (file.endsWith('.mxl')) {
+    const url = `${SCORES_BASE}/${encodeURIComponent(file)}`
+    const res = await fetch(url, { method: 'HEAD' })
+    if (!res.ok) throw new Error(`Файл «${file}» не знайдено в public/scores`)
+    return url
+  }
   const res = await fetch(`${SCORES_BASE}/${file}`)
   if (!res.ok) {
     throw new Error(`Файл «${file}» не знайдено в public/scores`)

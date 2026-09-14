@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "id": "alle-meine-entchen",
+    "title": "Alle meine Entchen",
+    "file": "Alle _meine_Entchen.mxl",
+    "meter": "2/4",
+    "key": "C-dur",
+    "description": "Класична дитяча пісенька"
+  },
+  {
+    "id": "bruder-jakob",
+    "title": "Bruder Jakob",
+    "file": "bruder_jakob.mxl",
+    "meter": "4/4",
+    "key": "C-dur",
+    "description": "Класична дитяча пісенька"
+  }
+]

@@ -162,11 +162,11 @@ export function SheetViewer({ musicxml }: Props) {
 
       {failed && <p className="px-4 py-8 text-sm text-accent">Ноти не відобразились: {failed}</p>}
 
-      <div
-        ref={containerRef}
-        className="osmd-container overflow-x-auto p-4"
-        style={{ display: rendering || failed ? 'none' : 'block' }}
-      />
+      <div className="overflow-x-auto" style={{ display: rendering || failed ? 'none' : 'block' }}>
+        <div className="p-4 pr-8">
+          <div ref={containerRef} className="osmd-container" />
+        </div>
+      </div>
     </div>
   )
 }

@@ -137,6 +137,122 @@ def build_left_hand(ctx: ArrangeContext, cfg: ArrangeConfig,
 
 
 # =================================================================
+#  Варіація 1 — ліва рука з циклом баса I–III–V
+# =================================================================
+
+def _cs_id(cs) -> str:
+    """Ідентифікатор гармонії — щоб бачити момент зміни акорду."""
+    if cs is None:
+        return ''
+    try:
+        return cs.figure or cs.root().name
+    except Exception:
+        return ''
+
+
+def _bass_degree(cs: harmony.ChordSymbol, idx: int) -> pitch.Pitch:
+    """
+    Бас за номером у циклі: 0 -> прима, 1 -> терція, 2 -> квінта.
+
+    Береться РЕАЛЬНА терція акорду, а не контрабасовий ряд. Контрабас
+    на готовій системі завжди відстоїть на велику терцію вгору, тож під
+    Em він дав би соль-дієз; баяніст натомість бере основний бас Соль.
+    Якщо потрібного тону в акорді немає (sus, неповні структури),
+    ступінь відкочується до прими, а не викидає виняток.
+    """
+    root = pitch.Pitch(cs.root().name)
+    root.octave = 2
+    if root.midi < 40:
+        root = root.transpose(12)
+
+    tone = None
+    if idx == 1 and cs.third is not None:
+        tone = cs.third
+    elif idx == 2 and cs.fifth is not None:
+        tone = cs.fifth
+    if tone is None:
+        return root
+
+    p = pitch.Pitch(tone.name)
+    p.octave = root.octave
+    while p.midi <= root.midi:          # завжди вгору від прими
+        p = p.transpose(12)
+    if p.midi - root.midi > 8:          # але не далі квінти
+        p = p.transpose(-12)
+    return p
+
+
+def build_left_hand_v1(ctx: ArrangeContext, cfg: ArrangeConfig,
+                       cycle: Tuple[int, ...] = (0, 1, 2)
+                       ) -> List[note.GeneralNote]:
+    """
+    Варіація 1: сітка Б А А лишається, змінюється висота баса —
+    він іде по ступенях акорду I -> III -> V.
+
+    Лічильник циклу СКИДАЄТЬСЯ на кожній зміні гармонії: нова функція
+    завжди входить примою, інакше слух не чує, де саме мінявся акорд,
+    і басова лінія перетворюється на безадресний рух.
+
+    Дужкові баси з оригінального видання не відтворюються: це редакторська
+    позначка натиснутої кнопки, а не окрема атака.
+    """
+    ts = ctx.ts
+    bar_ql = ts.barDuration.quarterLength
+    beat = ts.beatDuration.quarterLength
+    compound = abs(beat - 1.5) < 1e-6
+
+    if compound:                      # 6/8, 9/8, 12/8 — групи по три вісімки
+        unit, per_group = 0.5, 3
+        groups = max(1, int(round(bar_ql / 1.5)))
+    else:
+        beats = max(1, int(round(bar_ql / beat)))
+        unit = beat
+        if beats % 2 == 0:
+            per_group, groups = 2, beats // 2
+        else:
+            per_group, groups = beats, 1
+
+    out: List[note.GeneralNote] = []
+    if ctx.pickup_ql > 1e-6:
+        r = note.Rest(); r.duration.quarterLength = ctx.pickup_ql; r.offset = 0.0
+        out.append(r)
+
+    n_bars = max(1, int(round((ctx.total_ql - ctx.pickup_ql) / bar_ql)))
+    prev_id: Optional[str] = None
+    step_i = 0
+
+    for b in range(n_bars):
+        bar_off = ctx.pickup_ql + b * bar_ql
+        for g in range(groups):
+            g_off = bar_off + g * unit * per_group
+            cs = ctx.chord_at(g_off)
+            if cs is None:
+                r = note.Rest(); r.duration.quarterLength = unit * per_group
+                r.offset = g_off; out.append(r)
+                continue
+
+            cid = _cs_id(cs)
+            if cid != prev_id:
+                step_i = 0
+                prev_id = cid
+            bass = _bass_degree(cs, cycle[step_i % len(cycle)])
+            step_i += 1
+
+            nb = note.Note(bass)
+            nb.duration.quarterLength = unit
+            nb.offset = g_off
+            out.append(nb)
+
+            voicing = stradella_voicing(cs)
+            for j in range(1, per_group):
+                c = chord.Chord([p.nameWithOctave for p in voicing])
+                c.duration.quarterLength = unit
+                c.offset = g_off + j * unit
+                out.append(c)
+    return out
+
+
+# =================================================================
 #  Фактури правої руки
 # =================================================================
 
@@ -154,6 +270,169 @@ def _parallel_below(p: pitch.Pitch, cs, k: key.Key) -> pitch.Pitch:
         if cs is None or cand.pitchClass in {x.pitchClass for x in cs.pitches}:
             return cand
     return _step(_step(p, k, -1), k, -1)
+
+
+def _sixth_below(p: pitch.Pitch, cs, k: key.Key,
+                 floor_midi: int = 53) -> pitch.Pitch:
+    """
+    Секста вниз від мелодії, рахована ПО ГАМІ — п'ять діатонічних кроків,
+    а не механічний зсув на 8-9 півтонів. Механіка давала б сі-бемоль
+    у ре-мажорі, бо ця нота не належить тональності.
+
+    Активний акорд у спуск НЕ передається навмисно. `_step` з акордом
+    підтягує результат до альтерованого тону тієї ж ступені, і в мі-мінорі
+    під B7 спуск застрягав на ре-дієзі: всі сексти схлопувалися в одну ноту.
+    Гама рахується за ключовими знаками, гармонія враховується один раз
+    наприкінці.
+
+    Корекція під акорд вмикається лише тоді, коли САМА мелодична нота є
+    акордовим тоном: тоді неакордова секста під нею чується як бруд.
+    На прохідних нотах мелодії секста лишається діатонічною — рівність
+    паралелізму важливіша за чистоту кожного окремого співзвуччя.
+
+    Написання альтерованої ноти береться з акорду, а не з `transpose`:
+    інакше під B7 виходив мі-бемоль замість ре-дієза.
+    """
+    low = p
+    for _ in range(5):
+        low = _step(low, k, -1)
+
+    if cs is not None:
+        pcs = {x.pitchClass for x in cs.pitches}
+        if p.pitchClass in pcs and low.pitchClass not in pcs:
+            for semis in (-1, 1):
+                cand = low.transpose(semis)
+                if not (8 <= p.midi - cand.midi <= 9):
+                    continue
+                hit = next((t for t in cs.pitches
+                            if t.pitchClass == cand.pitchClass), None)
+                if hit is not None:
+                    q = pitch.Pitch(hit.name)
+                    q.octave = 4
+                    q.octave += (cand.midi - q.midi) // 12
+                    low = q
+                    break
+
+    # Провал під нижню межу правої клавіатури: секста замінюється терцією,
+    # бо перенесення на октаву вгору зламало б паралельний рух.
+    if low.midi < floor_midi:
+        low = p
+        for _ in range(2):
+            low = _step(low, k, -1)
+    return low
+
+
+def v1a_sixths(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.GeneralNote]:
+    """Варіація 1, перша частина: мелодія зверху, секста під нею."""
+    out = []
+    for ev in ctx.events:
+        if ev.is_rest:
+            el = note.Rest()
+        else:
+            top = _clamp(ev.pitch.transpose(12 * cfg.octave_shift), cfg) \
+                if cfg.octave_shift else ev.pitch
+            low = _sixth_below(top, ctx.chord_at(ev.offset), ctx.key,
+                               cfg.rh_min_midi)
+            el = chord.Chord([low.nameWithOctave, top.nameWithOctave])
+        el.duration.quarterLength = ev.ql
+        el.offset = ev.offset
+        out.append(el)
+    return out
+
+
+def _triad_below(top: pitch.Pitch, cs, k: key.Key,
+                 floor_midi: int = 53) -> List[pitch.Pitch]:
+    """
+    Дві акордові ноти під мелодією — разом із нею виходить тризвук.
+
+    Ноти добираються згори вниз із перевіркою інтервалу: між сусідніми
+    голосами мінімум мала терція. Без цього під G7 з мелодією сі малої
+    октави виходило F3+G3+B3 — дві нижні ноти на велику секунду, що на
+    баяні звучить кластером, а не акордом.
+
+    Якщо тризвук у регістр не вміщається, падаємо на діатонічну пару
+    секста+терція, а якщо й вона не вміщається — на саму терцію.
+    """
+    tones = [q for q in _chord_tones_near(cs, top)
+             if q.midi < top.midi and q.pitchClass != top.pitchClass
+             and q.midi >= floor_midi]
+    seen, uniq = set(), []
+    for q in sorted(tones, key=lambda x: -x.midi):
+        if q.midi not in seen:
+            seen.add(q.midi); uniq.append(q)
+
+    picked, prev = [], top
+    for q in uniq:
+        if prev.midi - q.midi >= 3:
+            picked.append(q); prev = q
+        if len(picked) == 2:
+            break
+    if len(picked) == 2:
+        return sorted(picked, key=lambda x: x.midi)
+
+    low3, low6 = top, top
+    for _ in range(2):
+        low3 = _step(low3, k, -1)
+    for _ in range(5):
+        low6 = _step(low6, k, -1)
+    fb = [q for q in (low6, low3) if q.midi >= floor_midi]
+    return fb or [low3]
+
+
+def _section_split(ctx: ArrangeContext) -> float:
+    """
+    Offset, з якого починається друга частина: поділ навпіл за тактами.
+
+    Затакт не рахується, непарна кількість тактів округлюється на користь
+    ПЕРШОЇ частини — інакше акордова фактура входила б на такт раніше,
+    ніж мелодія до неї дозріла.
+    """
+    bar_ql = ctx.ts.barDuration.quarterLength
+    n_bars = max(1, int(round((ctx.music_end_ql - ctx.pickup_ql) / bar_ql)))
+    first = (n_bars + 1) // 2
+    return ctx.pickup_ql + first * bar_ql
+
+
+def v1_sixths_chords(ctx: ArrangeContext, cfg: ArrangeConfig,
+                     lift_low_section: bool = True) -> List[note.GeneralNote]:
+    """
+    Варіація 1 цілком: перша частина в сексту, друга — тризвуками.
+
+    Друга частина за потреби піднімається на октаву. Причина суто
+    інструментальна: щоб під мелодією вмістилися дві акордові ноти,
+    вона має лежати хоча б на велику сексту вище низу клавіатури.
+    Мелодії, що опускаються до сі малої, інакше давали б двозвуки
+    замість тризвуків. Підйом вимикається прапорцем.
+    """
+    split = _section_split(ctx)
+    lift = 0
+    if lift_low_section:
+        tail = [e.pitch.midi for e in ctx.events
+                if not e.is_rest and e.offset >= split - 1e-6]
+        if tail and min(tail) < cfg.rh_min_midi + 9:
+            lift = 12
+
+    out = []
+    for ev in ctx.events:
+        if ev.is_rest:
+            el = note.Rest()
+        else:
+            top = _clamp(ev.pitch.transpose(12 * cfg.octave_shift), cfg) \
+                if cfg.octave_shift else ev.pitch
+            cs = ctx.chord_at(ev.offset)
+            if ev.offset < split - 1e-6:
+                low = _sixth_below(top, cs, ctx.key, cfg.rh_min_midi)
+                el = chord.Chord([low.nameWithOctave, top.nameWithOctave])
+            else:
+                if lift:
+                    top = _clamp(top.transpose(lift), cfg)
+                below = _triad_below(top, cs, ctx.key, cfg.rh_min_midi)
+                el = chord.Chord([q.nameWithOctave for q in below]
+                                 + [top.nameWithOctave])
+        el.duration.quarterLength = ev.ql
+        el.offset = ev.offset
+        out.append(el)
+    return out
 
 
 def v0_thirds(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.GeneralNote]:
@@ -275,7 +554,11 @@ def v3_broken_sixths(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Gener
     return out
 
 
+LH_V1 = {'S1', 'S1A'}      # фактури, які беруть ліву руку варіації 1
+
 TEXTURES = {
+    'S1':  ('Варіація 1 (сексти / тризвуки)', v1_sixths_chords),
+    'S1A': ('Варіація 1, лише сексти', v1a_sixths),
     'V0': ('Тема двоголоссям', v0_thirds),
     'V1': ('Акордизація', v1_chords),
     'V2': ('Педальна фігурація', v2_pedal),
@@ -387,6 +670,7 @@ def build_coda(k: key.Key, ts, start_off: float) -> Tuple[list, list, float]:
 
 # Кожна строфа: (фактура, зсув октав, чи ставити зв'язку після)
 DEFAULT_PLAN = [
+    ('S1', 0, True),    # варіація 1: сексти -> тризвуки
     ('V0', 0, False),   # тема двоголоссям
     ('V1', 0, True),    # акордизація тієї ж теми
     ('V2', 0, True),    # педальна фігурація
@@ -451,7 +735,7 @@ def arrange_style(source, n_strophes: int = 5, with_coda: bool = True,
 
     cursor = 0.0
     marks = []
-    tempos = {'V0': 84, 'V1': 88, 'V2': 96, 'V3': 100}
+    tempos = {'S1': 88, 'S1A': 88, 'V0': 84, 'V1': 88, 'V2': 96, 'V3': 100}
 
     for tx, oct_, link_after in steps:
         # стеля нижча за загальну: у джерелі кульмінація сягає D6,
@@ -459,7 +743,8 @@ def arrange_style(source, n_strophes: int = 5, with_coda: bool = True,
         cfg = replace(ArrangeConfig(), octave_shift=oct_, arp_unit_ql=0.25,
                       rh_max_midi=89)
         rh_el = TEXTURES[tx][1](ctx, cfg)
-        lh_el = build_left_hand(ctx, cfg)
+        lh_el = (build_left_hand_v1 if tx in LH_V1
+                 else build_left_hand)(ctx, cfg)
         label = TEXTURES[tx][0] + (' (октавою вище)' if oct_ else '')
         marks.append((cursor, label, tempos.get(tx, DEFAULT_TEMPO)))
         for src, dst in ((rh_el, rh_part), (lh_el, lh_part)):

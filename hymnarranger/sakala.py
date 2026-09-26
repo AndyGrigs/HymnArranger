@@ -25,7 +25,7 @@ from typing import List, Optional, Tuple
 from music21 import chord, harmony, key, note, pitch, stream
 
 from .model import ArrangeContext, ArrangeConfig
-from .theory import _step, _chord_tones_near, _clamp
+from .theory import _step, _steps_between, _chord_tones_near, _clamp
 from .meters import parts_for
 
 
@@ -249,6 +249,145 @@ def build_left_hand_v1(ctx: ArrangeContext, cfg: ArrangeConfig,
                 c.duration.quarterLength = unit
                 c.offset = g_off + j * unit
                 out.append(c)
+    return out
+
+
+def _strong_span(ts) -> float:
+    """
+    Відстань між сильними долями.
+
+    Складені (3/8, 6/8, 9/8, 12/8) -> 1.5: сильна кожна перша вісімка групи.
+    Прості з парним тактом (2/4, 4/4, 12/4, 2/2) -> 2.0: перша й третя чверть.
+    3/4 і непарні (5/8, 7/8) -> цілий такт: сильна там лише перша доля.
+    """
+    if abs(ts.beatDuration.quarterLength - 1.5) < 1e-6:
+        return 1.5
+    bar = ts.barDuration.quarterLength
+    if bar >= 2.0 and abs(bar % 2.0) < 1e-6:
+        return 2.0
+    return bar
+
+
+def _sounding_at(ctx: ArrangeContext, off: float) -> Optional[pitch.Pitch]:
+    """Висота, що звучить на заданому offset; на паузі — остання взята нота."""
+    cur = None
+    for ev in ctx.events:
+        if ev.offset > off + 1e-6:
+            break
+        if not ev.is_rest:
+            cur = ev.pitch
+    return cur
+
+
+def _connector(cur: pitch.Pitch, nxt: pitch.Pitch, cs, k: key.Key,
+               gd: int, gap: int, n: int) -> List[pitch.Pitch]:
+    """
+    Рівно n висот прохідної фігури, що підводять до наступної сильної долі.
+
+    Малі інтервали йдуть ходом, великі — тонами акорду, як ти й просив.
+    Коли акордових тонів між двома сильними долями менше, ніж потрібно нот,
+    фігура добудовується діатонічно ВІД ЦІЛІ НАЗАД — так остання нота
+    завжди стоїть за крок від цілі, і підхід не провисає.
+    """
+    if gap == 0:                       # на місці: верхня допоміжна і назад
+        base = [_step(cur, k, +1), cur]
+    elif gap == 1:                     # сусідній ступінь: обхід з протилежного боку
+        base = [_step(cur, k, -gd), cur]
+    elif gap == 2:                     # через один: повтор і прохідна
+        base = [cur, _step(cur, k, gd)]
+    else:
+        lo, hi = min(cur.midi, nxt.midi), max(cur.midi, nxt.midi)
+        uniq = {}
+        for q in _chord_tones_near(cs, cur):
+            if lo < q.midi < hi:
+                uniq[q.midi] = q
+        mid = sorted(uniq.values(), key=lambda x: x.midi)
+        if len(mid) >= n:
+            base = mid[-n:] if gd > 0 else mid[:n][::-1]
+        else:
+            seq, q = [], nxt
+            for _ in range(n):
+                q = _step(q, k, -gd)
+                seq.append(q)
+            base = seq[::-1]
+    while len(base) < n:
+        base.insert(0, cur)
+    return base[-n:]
+
+
+def v2_dotted_run(ctx: ArrangeContext, cfg: ArrangeConfig
+                  ) -> List[note.GeneralNote]:
+    """
+    Варіація 2: сильні долі тримають мелодію, короткі ноти між ними
+    зливаються у витримку, а підхід до наступної сильної долі йде
+    пунктиром або розбігом шістнадцяток.
+
+    Вибір фігури за величиною стрибка:
+      <= 2 ступені -> пунктир (шістнадцятка з крапкою + тридцять друга);
+      == 3         -> дві шістнадцятки;
+      >= 4         -> три шістнадцятки, але лише у складених розмірах.
+
+    Останнє обмеження суто нотаційне. Три шістнадцятки з'їдають 0.75, і в
+    6/8 витримка лишається вісімкою з крапкою — чистий запис. У 4/4 вона
+    вийшла б 1.25, тобто «чверть, залігована з шістнадцяткою»: так ноти
+    не пишуть, тому в простих розмірах розбіг завжди дві шістнадцятки.
+
+    Фактура двоголосна на всій довжині, прикрашальні ноти теж двозвучні —
+    як у зразку.
+    """
+    ts = ctx.ts
+    span = _strong_span(ts)
+    compound = abs(ts.beatDuration.quarterLength - 1.5) < 1e-6
+    end = ctx.music_end_ql
+
+    out: List[note.GeneralNote] = []
+    if ctx.pickup_ql > 1e-6:
+        r = note.Rest(); r.duration.quarterLength = ctx.pickup_ql; r.offset = 0.0
+        out.append(r)
+
+    def dyad(p, off, ql):
+        top = _clamp(p, cfg)
+        low = _sixth_below(top, ctx.chord_at(off), ctx.key, cfg.rh_min_midi)
+        c = chord.Chord([low.nameWithOctave, top.nameWithOctave])
+        c.duration.quarterLength = ql
+        c.offset = off
+        return c
+
+    s = ctx.pickup_ql
+    while s < end - 1e-6:
+        cur = _sounding_at(ctx, s)
+        nxt = _sounding_at(ctx, min(s + span, end - 1e-6))
+        seg = min(span, end - s)
+
+        if cur is None:
+            r = note.Rest(); r.duration.quarterLength = seg; r.offset = s
+            out.append(r); s += span; continue
+        if nxt is None or seg < span - 1e-6:
+            out.append(dyad(cur, s, seg)); s += span; continue
+
+        d = _steps_between(cur, nxt, ctx.key)
+        gap = abs(d)
+        gd = 1 if d >= 0 else -1
+
+        if gap <= 2:
+            tail = [0.375, 0.125]
+        elif gap == 3 or not compound:
+            tail = [0.25, 0.25]
+        else:
+            tail = [0.25, 0.25, 0.25]
+        hold = span - sum(tail)
+        if hold < 0.25:                # дуже короткий прогін — рятуємо витримку
+            tail = [0.25, 0.25]
+            hold = span - 0.5
+        pitches = _connector(cur, nxt, ctx.chord_at(s), ctx.key,
+                             gd, gap, len(tail))
+
+        out.append(dyad(cur, s, hold))
+        off = s + hold
+        for p, ql in zip(pitches, tail):
+            out.append(dyad(p, off, ql))
+            off += ql
+        s += span
     return out
 
 
@@ -554,11 +693,12 @@ def v3_broken_sixths(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Gener
     return out
 
 
-LH_V1 = {'S1', 'S1A'}      # фактури, які беруть ліву руку варіації 1
+LH_V1 = {'S1', 'S1A', 'S2'}      # фактури, які беруть ліву руку варіації 1
 
 TEXTURES = {
     'S1':  ('Варіація 1 (сексти / тризвуки)', v1_sixths_chords),
     'S1A': ('Варіація 1, лише сексти', v1a_sixths),
+    'S2':  ('Варіація 2 (пунктир / розбіг)', v2_dotted_run),
     'V0': ('Тема двоголоссям', v0_thirds),
     'V1': ('Акордизація', v1_chords),
     'V2': ('Педальна фігурація', v2_pedal),
@@ -671,6 +811,7 @@ def build_coda(k: key.Key, ts, start_off: float) -> Tuple[list, list, float]:
 # Кожна строфа: (фактура, зсув октав, чи ставити зв'язку після)
 DEFAULT_PLAN = [
     ('S1', 0, True),    # варіація 1: сексти -> тризвуки
+    ('S2', 0, True),    # варіація 2: пунктир / розбіг
     ('V0', 0, False),   # тема двоголоссям
     ('V1', 0, True),    # акордизація тієї ж теми
     ('V2', 0, True),    # педальна фігурація
@@ -735,7 +876,8 @@ def arrange_style(source, n_strophes: int = 5, with_coda: bool = True,
 
     cursor = 0.0
     marks = []
-    tempos = {'S1': 88, 'S1A': 88, 'V0': 84, 'V1': 88, 'V2': 96, 'V3': 100}
+    tempos = {'S1': 88, 'S1A': 88, 'S2': 92, 'V0': 84, 'V1': 88,
+              'V2': 96, 'V3': 100}
 
     for tx, oct_, link_after in steps:
         # стеля нижча за загальну: у джерелі кульмінація сягає D6,

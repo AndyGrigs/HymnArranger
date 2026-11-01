@@ -32,7 +32,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from . import meters
 from .parsing import parse_input
 from .assembly import (arrange, arrange_multi, save, to_musicxml_string,
-                       to_abc_string, midi_bytes)
+                       to_abc_string)  # , midi_bytes)
 from .suite import arrange_suite, plan_suite
 from . import styles
 from slowapi import _rate_limit_exceeded_handler
@@ -518,57 +518,58 @@ async def style_arrange(request: Request,
         os.unlink(path)
 
 
-@app.post('/midi')
-async def midi(request: Request,
-               raw: bool = Query(False),
-               seed: Optional[int] = Query(None),
-               preset: Optional[str] = Query(None)):
-    """
-    Та сама музика у форматі MIDI.
-
-    ?raw=true — конвертує переданий MusicXML напряму, без аранжування.
-    Використовується коли клієнт вже має готову партитуру в пам'яті.
-    Без raw= — аранжує мелодію (suite або обраний preset).
-    """
-    import music21
-    path = await _read_source(request)
-    try:
-        if raw:
-            _validate_file(path)
-            score = music21.converter.parse(path)
-        # elif preset and preset.startswith('style:'):  # вимкнено разом з /style
-        #     try:
-        #         mod = styles.get(preset.split(':', 1)[1])
-        #     except KeyError as exc:
-        #         raise HTTPException(404, str(exc))
-        #     ctx = _context(path)
-        #     _check_measures(ctx)
-        #     score = await _run_sync(
-        #         functools.partial(mod.arrange_style, path, verbose=False)
-        #     )
-        elif preset:
-            ctx = _context(path)
-            presets = meters.presets(ctx.ts)
-            if preset not in presets:
-                raise HTTPException(404, f'Пресет {preset!r} недоступний для '
-                                         f'розміру {ctx.ts.ratioString}')
-            _check_measures(ctx)
-            score = await _run_sync(
-                functools.partial(arrange, path, presets[preset], quiet=True)
-            )
-        else:
-            ctx = _context(path)
-            _check_measures(ctx)
-            score = await _run_sync(
-                functools.partial(arrange_suite, path, seed=seed, verbose=False)
-            )
-        return StreamingResponse(
-            io.BytesIO(midi_bytes(score)),
-            media_type='audio/midi',
-            headers={'Content-Disposition': 'inline; filename="arrangement.mid"'},
-        )
-    finally:
-        os.unlink(path)
+# вимкнено: MIDI генерується некоректно (повернути — розкоментувати блок і імпорт midi_bytes)
+# @app.post('/midi')
+# async def midi(request: Request,
+#                raw: bool = Query(False),
+#                seed: Optional[int] = Query(None),
+#                preset: Optional[str] = Query(None)):
+#     """
+#     Та сама музика у форматі MIDI.
+#
+#     ?raw=true — конвертує переданий MusicXML напряму, без аранжування.
+#     Використовується коли клієнт вже має готову партитуру в пам'яті.
+#     Без raw= — аранжує мелодію (suite або обраний preset).
+#     """
+#     import music21
+#     path = await _read_source(request)
+#     try:
+#         if raw:
+#             _validate_file(path)
+#             score = music21.converter.parse(path)
+#         # elif preset and preset.startswith('style:'):  # вимкнено разом з /style
+#         #     try:
+#         #         mod = styles.get(preset.split(':', 1)[1])
+#         #     except KeyError as exc:
+#         #         raise HTTPException(404, str(exc))
+#         #     ctx = _context(path)
+#         #     _check_measures(ctx)
+#         #     score = await _run_sync(
+#         #         functools.partial(mod.arrange_style, path, verbose=False)
+#         #     )
+#         elif preset:
+#             ctx = _context(path)
+#             presets = meters.presets(ctx.ts)
+#             if preset not in presets:
+#                 raise HTTPException(404, f'Пресет {preset!r} недоступний для '
+#                                          f'розміру {ctx.ts.ratioString}')
+#             _check_measures(ctx)
+#             score = await _run_sync(
+#                 functools.partial(arrange, path, presets[preset], quiet=True)
+#             )
+#         else:
+#             ctx = _context(path)
+#             _check_measures(ctx)
+#             score = await _run_sync(
+#                 functools.partial(arrange_suite, path, seed=seed, verbose=False)
+#             )
+#         return StreamingResponse(
+#             io.BytesIO(midi_bytes(score)),
+#             media_type='audio/midi',
+#             headers={'Content-Disposition': 'inline; filename="arrangement.mid"'},
+#         )
+#     finally:
+#         os.unlink(path)
 
 
 @app.post('/merge')

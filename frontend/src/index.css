@@ -34,6 +34,21 @@ body {
   fill: #e53e3e;
 }
 
+/* Нота, яка звучить зараз (клас ставить AbcPaper під час відтворення). */
+.ha-score svg .ha-note-playing path,
+.ha-score svg .ha-note-playing use,
+.ha-score svg .ha-note-playing text,
+svg .ha-note-playing path,
+svg .ha-note-playing use {
+  fill: #1d6fe0;
+}
+
+.ha-score svg .ha-note-playing {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(1.12);
+}
+
 /* OSMD створює окремий блок на кожен аркуш: osmdCanvasPage1, 2, 3…
    За замовчуванням вони йдуть впритул і виглядають як суцільний блок,
    тому оформлюємо їх як окремі сторінки. */

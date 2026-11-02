@@ -340,7 +340,7 @@ export function HomePage() {
                       >
                         <div className="ha-score">
                           <Suspense fallback={<div className="flex justify-center py-12"><Spinner /></div>}>
-                            <AbcPaper abc={arrangement.result.abc} className="" />
+                            <AbcPaper abc={arrangement.result.abc} className="" playable />
                           </Suspense>
                         </div>
                       </div>

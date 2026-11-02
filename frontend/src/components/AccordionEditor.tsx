@@ -1,16 +1,14 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import abcjs from 'abcjs'
 import { useTranslation } from 'react-i18next'
 import { Download, Save } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { api, ApiError, type AccordionHands } from '../api'
+import { useAbcPlayback } from '../hooks/useAbcPlayback'
 import { useAuth } from '../hooks/useAuth'
 import { composeAccordionAbc, hasNotes } from '../lib/accordionAbc'
 import { saveBlob, safeName } from '../lib/download'
 import { Spinner } from './ui/Spinner'
-
-// General MIDI program 21 (0-indexed) = Accordion, same as AbcEditor.
-const GM_ACCORDION_PROGRAM = 21
 
 type Hand = 'right' | 'left'
 type Duration = 'whole' | 'half' | 'quarter' | 'eighth' | 'sixteenth'
@@ -62,38 +60,25 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
   const [octaves, setOctaves] = useState<Record<Hand, number>>(DEFAULT_OCTAVE)
 
   const [warnings, setWarnings] = useState<string[]>([])
-  const [playState, setPlayState] = useState<'idle' | 'loading' | 'playing'>('idle')
   const [busy, setBusy] = useState<'save' | 'xml' | null>(null)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
 
   const areaRefs = useRef<Record<Hand, HTMLTextAreaElement | null>>({ right: null, left: null })
   // Остання позиція курсора в кожному полі: клік по кнопці знімає фокус.
   const cursorRef = useRef<Record<Hand, number | null>>({ right: null, left: null })
-  const synthRef = useRef<abcjs.MidiBuffer | null>(null)
-  const busyPlayRef = useRef(false)
-  const stopTimerRef = useRef<number | null>(null)
+  const visualRef = useRef<abcjs.TuneObject | null>(null)
 
   const hands: AccordionHands = { right, left, key: keySig, meter }
   const abc = composeAccordionAbc(hands, title)
   const canSave = hasNotes(right) || hasNotes(left)
+  const { playState, play, stop } = useAbcPlayback(() => visualRef.current, abc)
 
   useEffect(() => {
     const visual = abcjs.renderAbc(paperId, abc, { responsive: 'resize' })
+    visualRef.current = visual?.[0] ?? null
     const parserWarnings = (visual?.[0]?.warnings ?? []).map((w: string) => w.replace(/<[^>]+>/g, ''))
     setWarnings(parserWarnings)
   }, [paperId, abc])
-
-  const clearStopTimer = useCallback(() => {
-    if (stopTimerRef.current !== null) {
-      clearTimeout(stopTimerRef.current)
-      stopTimerRef.current = null
-    }
-  }, [])
-
-  useEffect(() => () => {
-    synthRef.current?.stop?.()
-    clearStopTimer()
-  }, [clearStopTimer])
 
   function setText(h: Hand, value: string) {
     if (h === 'right') setRight(value)
@@ -140,55 +125,6 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
     if (!confirm(t('editors.accordion.confirmClear', { hand: handLabel(hand).toLowerCase() }))) return
     setText(hand, '')
     cursorRef.current[hand] = null
-  }
-
-  async function togglePlay() {
-    if (playState === 'playing') {
-      synthRef.current?.stop?.()
-      clearStopTimer()
-      busyPlayRef.current = false
-      setPlayState('idle')
-      return
-    }
-    if (busyPlayRef.current) return
-    busyPlayRef.current = true
-    setPlayState('loading')
-
-    if (!abcjs.synth.supportsAudio()) {
-      alert(t('editors.accordion.noAudio'))
-      busyPlayRef.current = false
-      setPlayState('idle')
-      return
-    }
-
-    try {
-      const visual = abcjs.renderAbc('*', abc)
-      if (!visual?.[0]) throw new Error('empty')
-      if (!synthRef.current) synthRef.current = new abcjs.synth.CreateSynth()
-      const synth = synthRef.current
-      synth.stop?.()
-      await synth.init({
-        visualObj: visual[0],
-        options: {
-          program: GM_ACCORDION_PROGRAM,
-          onEnded: () => {
-            clearStopTimer()
-            busyPlayRef.current = false
-            setPlayState('idle')
-          },
-        },
-      })
-      const { duration: seconds } = await synth.prime()
-      synth.start()
-      setPlayState('playing')
-      stopTimerRef.current = window.setTimeout(() => {
-        busyPlayRef.current = false
-        setPlayState('idle')
-      }, seconds * 1000 + 300)
-    } catch {
-      busyPlayRef.current = false
-      setPlayState('idle')
-    }
   }
 
   const fileTitle = title.trim() || t('editors.accordion.defaultTitle')
@@ -264,15 +200,15 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
         </select>
         <button
           type="button"
-          onClick={togglePlay}
-          disabled={playState === 'loading' || !canSave}
+          onClick={playState === 'idle' ? play : stop}
+          disabled={playState === 'loading' || (playState === 'idle' && !canSave)}
           className={`ml-auto flex items-center gap-1.5 rounded-full border px-3.5 py-1.25 text-[13px] font-medium transition disabled:opacity-50 ${
-            playState === 'playing'
+            playState === 'playing' || playState === 'paused'
               ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
               : 'border-[#dcdad2] bg-white text-ink hover:border-accent hover:text-accent'
           }`}
         >
-          {playState === 'playing' ? t('editors.accordion.stop') : playState === 'loading' ? t('editors.accordion.preparing') : t('editors.accordion.play')}
+          {playState === 'playing' || playState === 'paused' ? t('editors.accordion.stop') : playState === 'loading' ? t('editors.accordion.preparing') : t('editors.accordion.play')}
         </button>
       </div>
 

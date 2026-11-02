@@ -99,4 +99,12 @@ export const panels: Messages['panels'] = {
     kb: 'KB',
     mb: 'MB',
   },
+  player: {
+    play: 'Anhören',
+    pause: 'Pause',
+    resume: 'Fortsetzen',
+    stop: 'Stopp',
+    preparing: 'Klang wird vorbereitet…',
+    noAudio: 'Ihr Browser unterstützt die Web Audio API nicht',
+  },
 }

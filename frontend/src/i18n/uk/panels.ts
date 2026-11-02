@@ -97,4 +97,12 @@ export const panels = {
     kb: 'КБ',
     mb: 'МБ',
   },
+  player: {
+    play: 'Слухати',
+    pause: 'Пауза',
+    resume: 'Продовжити',
+    stop: 'Стоп',
+    preparing: 'Готую звук…',
+    noAudio: 'Ваш браузер не підтримує Web Audio API',
+  },
 }

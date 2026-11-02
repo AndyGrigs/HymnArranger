@@ -2,11 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import abcjs from 'abcjs'
 import { useTranslation } from 'react-i18next'
 import i18n from '../i18n'
-
-// General MIDI program 21 (0-indexed) = Accordion — matches the instrument
-// the backend writes into generated scores (hymnarranger/assembly.py),
-// so the in-editor preview matches what you'll hear after arranging.
-const GM_ACCORDION_PROGRAM = 21
+import { useAbcPlayback } from '../hooks/useAbcPlayback'
 
 const DEFAULT_TUNE = `X:1
 T:Happy Birthday to You
@@ -165,11 +161,6 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const editorRef = useRef<abcjs.Editor | null>(null)
-  const synthRef = useRef<abcjs.MidiBuffer | null>(null)
-  // Synchronous lock for togglePlay — setPlayState is async, so between two
-  // fast clicks React may not have re-rendered yet; the ref changes instantly.
-  const busyRef = useRef(false)
-  const stopTimerRef = useRef<number | null>(null)
   // Stable wrapper so abcjs.Editor's cached params always call the latest handler
   const dragHandlerRef = useRef<abcjs.ClickListener>(() => {})
   // Char range of the note last clicked on the staff — abcjs already moves the
@@ -185,7 +176,9 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
   const [armedChord, setArmedChord] = useState<string | null>(null)
   const [abcWarnings, setAbcWarnings] = useState<string[]>([])
   const [barCount, setBarCount] = useState(() => countBars(initialAbc))
-  const [playState, setPlayState] = useState<'idle' | 'loading' | 'playing'>('idle')
+  // Поточний текст нот: коли він змінюється, відтворення зупиняється.
+  const [scoreText, setScoreText] = useState(initialAbc)
+  const { playState, play, stop } = useAbcPlayback(() => editorRef.current?.getTunes()?.[0], scoreText)
 
   const composedChord = chordRoot + chordQuality
   const octaveLabel = ['-1', '0', '+1', '+2'][octave + 1]
@@ -232,6 +225,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
           .map((w: string) => w.replace(/<[^>]+>/g, ''))
         setAbcWarnings([...parserWarnings, ...checkBarLengths(abcText)])
         setBarCount(countBars(abcText))
+        setScoreText(abcText)
       },
     })
     editorRef.current = editor
@@ -394,83 +388,6 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
     }
   }
 
-  function clearStopTimer() {
-    if (stopTimerRef.current !== null) {
-      clearTimeout(stopTimerRef.current)
-      stopTimerRef.current = null
-    }
-  }
-
-  // Cuts synth playback and the fallback timer on unmount — otherwise
-  // navigating away mid-playback leaves sound running in the background.
-  useEffect(() => () => {
-    synthRef.current?.stop?.()
-    clearStopTimer()
-  }, [])
-
-  async function togglePlay() {
-    const ta = textareaRef.current
-    if (!ta) return
-
-    if (playState === 'playing') {
-      // The only allowed action while playing is to stop.
-      synthRef.current?.stop?.()
-      clearStopTimer()
-      busyRef.current = false
-      setPlayState('idle')
-      return
-    }
-
-    if (busyRef.current) return // click landed while priming — ignore it
-    busyRef.current = true
-    setPlayState('loading')
-
-    if (!abcjs.synth.supportsAudio()) {
-      alert(t('editors.abc.noAudio'))
-      busyRef.current = false
-      setPlayState('idle')
-      return
-    }
-
-    try {
-      // '*' = parse-only, no DOM rendering
-      const visualObj = abcjs.renderAbc('*', ta.value)
-      if (!visualObj?.[0]) throw new Error('empty')
-
-      if (!synthRef.current) {
-        synthRef.current = new abcjs.synth.CreateSynth()
-      }
-      const synth = synthRef.current
-      synth.stop?.() // guard against a previous, not-fully-finished playback
-
-      await synth.init({
-        visualObj: visualObj[0],
-        options: {
-          program: GM_ACCORDION_PROGRAM,
-          onEnded: () => {
-            clearStopTimer()
-            busyRef.current = false
-            setPlayState('idle')
-          },
-        },
-      })
-      const { duration } = await synth.prime()
-      synth.start()
-      setPlayState('playing')
-
-      // Safety net: some browsers never fire onEnded (suspended audio
-      // context, backgrounded tab, …) — without this the button could get
-      // stuck showing "Стоп" forever.
-      stopTimerRef.current = window.setTimeout(() => {
-        busyRef.current = false
-        setPlayState('idle')
-      }, duration * 1000 + 300)
-    } catch {
-      busyRef.current = false
-      setPlayState('idle')
-    }
-  }
-
   function insertNote(pitch: string) {
     let p = pitch
     if (octave === -1) p += ','
@@ -528,16 +445,16 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
           )}
           <button
             type="button"
-            onClick={togglePlay}
+            onClick={playState === 'idle' ? play : stop}
             disabled={playState === 'loading'}
             {...noStealFocus}
             className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.25 pl-2.75 text-[13px] font-medium transition disabled:opacity-60 ${
-              playState === 'playing'
+              playState === 'playing' || playState === 'paused'
                 ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
                 : 'border-[#dcdad2] bg-white text-ink hover:border-accent hover:text-accent'
             }`}
           >
-            {playState === 'playing' ? t('editors.abc.stop') : playState === 'loading' ? t('editors.abc.preparing') : t('editors.abc.play')}
+            {playState === 'playing' || playState === 'paused' ? t('editors.abc.stop') : playState === 'loading' ? t('editors.abc.preparing') : t('editors.abc.play')}
           </button>
         </div>
       </div>

@@ -47,4 +47,10 @@ export const home: Messages['home'] = {
     resumeLabel: 'Melody',
     abcEditorLabel: 'Melody from the ABC editor',
   },
+  video: {
+    title: 'How to use the site',
+    text: 'A short video: from uploading a melody to a finished score.',
+    placeholder: 'The video is coming soon',
+    iframeTitle: 'HymnArranger video guide',
+  },
 }

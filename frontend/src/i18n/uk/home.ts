@@ -45,4 +45,10 @@ export const home = {
     resumeLabel: 'Мелодія',
     abcEditorLabel: 'Мелодія з ABC-редактора',
   },
+  video: {
+    title: 'Як користуватися сайтом',
+    text: 'Коротке відео: від завантаження мелодії до готової партитури.',
+    placeholder: 'Відео незабаром з’явиться',
+    iframeTitle: 'Відео-інструкція HymnArranger',
+  },
 }

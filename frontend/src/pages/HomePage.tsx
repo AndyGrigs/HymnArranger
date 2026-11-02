@@ -12,6 +12,7 @@ import { SectionList } from '../components/SectionList'
 import { MidiPlayer } from '../components/MidiPlayer'
 import { DownloadBar } from '../components/DownloadBar'
 import { Hero } from '../components/Hero'
+import { VideoSection } from '../components/VideoSection'
 import { Spinner } from '../components/ui/Spinner'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useArrangement, type Mode } from '../hooks/useArrangement'
@@ -118,6 +119,8 @@ export function HomePage() {
   return (
     <>
       <Hero />
+
+      <VideoSection />
 
       {/* ── Input card ──────────────────────────────────────────── */}
       <section className="mx-auto w-full max-w-7xl px-8 pt-10">

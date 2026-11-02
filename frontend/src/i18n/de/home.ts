@@ -47,4 +47,10 @@ export const home: Messages['home'] = {
     resumeLabel: 'Melodie',
     abcEditorLabel: 'Melodie aus dem ABC-Editor',
   },
+  video: {
+    title: 'So nutzen Sie die Seite',
+    text: 'Ein kurzes Video: von der hochgeladenen Melodie zur fertigen Partitur.',
+    placeholder: 'Das Video erscheint in Kürze',
+    iframeTitle: 'HymnArranger-Videoanleitung',
+  },
 }

@@ -21,7 +21,7 @@ export const home: Messages['home'] = {
     step2Title: '2. Das System analysiert die Noten',
     step2Text: 'HymnArranger erkennt Taktart und Tonart, findet die Akkorde über der Melodie und zeigt Warnungen an, wenn etwas verdächtig aussieht — noch bevor etwas erzeugt wird.',
     step3Title: '3. Arrangement-Art wählen',
-    step3Text: '„Thema mit Variationen“ — ein fertiges Stück aus mehreren Abschnitten; „Eine Textur“ — ein bestimmtes Preset für das ganze Lied; „Vergleich“ — alle Presets nacheinander; „Sakala-Stil“ — Strophen mit chromatischen Überleitungen und Coda. Stellen Sie Bass-Wechsel, Zufallswert oder Strophenzahl ein — und klicken Sie auf „Arrangieren“.',
+    step3Text: '„Thema mit Variationen“ — ein fertiges Stück aus mehreren Abschnitten; „Eine Textur“ — ein bestimmtes Preset für das ganze Lied; „Vergleich“ — alle Presets nacheinander; „Textur-Mix“ — jede Phrase mit anderer Textur; „Sakala-Stil“ — Strophen mit chromatischen Überleitungen und Coda. Stellen Sie Bass-Wechsel, Zufallswert oder Strophenzahl ein — und klicken Sie auf „Arrangieren“.',
     step4Title: '4. Ansehen und Ergebnis mitnehmen',
     step4Text: 'Die Partitur erscheint sofort: Sie können das MIDI anhören, die Noten direkt im Browser bearbeiten und die Änderungen übernehmen, die Akkorde je Abschnitt ansehen und anschließend MusicXML, komprimiertes .mxl oder MIDI herunterladen.',
     noFile: 'Keine fertige Notendatei? Mit dem Online-Editor schreiben Sie die Melodie von Grund auf.',

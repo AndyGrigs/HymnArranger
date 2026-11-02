@@ -8,6 +8,8 @@ import type {
   HealthOut,
   MergeOut,
   MessageOut,
+  MixOut,
+  MixParams,
   ScoreSource,
   StyleOut,
   StyleParams,
@@ -142,6 +144,11 @@ export const api = {
   /** Тема з варіаціями однією партитурою. */
   suite(source: ScoreSource, params: SuiteParams = {}, signal?: AbortSignal, token?: string) {
     return postJson<SuiteOut>('/suite', source, params, signal, token)
+  },
+
+  /** Одна варіація, де фактури чергуються по фразах. */
+  mix(source: ScoreSource, params: MixParams, signal?: AbortSignal, token?: string) {
+    return postJson<MixOut>('/mix', source, params, signal, token)
   },
 
   /** Усі доступні пресети підряд — для порівняння. */

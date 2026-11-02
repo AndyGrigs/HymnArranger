@@ -21,7 +21,7 @@ export const home: Messages['home'] = {
     step2Title: '2. The system analyzes the notes',
     step2Text: 'HymnArranger detects the time signature and key, finds the chords above the melody and shows warnings if anything looks suspicious — before anything is generated.',
     step3Title: '3. Choose an arrangement style',
-    step3Text: '“Theme with variations” — a finished piece made of several sections; “Single texture” — one preset for the whole hymn; “Comparison” — all presets one after another; “Sakala style” — verses with chromatic links and a coda. Set the bass alternation, the generation seed or the number of verses — and click “Arrange”.',
+    step3Text: '“Theme with variations” — a finished piece made of several sections; “Single texture” — one preset for the whole hymn; “Comparison” — all presets one after another; “Texture mix” — a different texture for each phrase; “Sakala style” — verses with chromatic links and a coda. Set the bass alternation, the generation seed or the number of verses — and click “Arrange”.',
     step4Title: '4. Review and take the result',
     step4Text: 'The score appears right away: you can listen to the MIDI, edit the notes in the browser and apply the changes, review the chords by section, and then download MusicXML, compressed .mxl or MIDI.',
     noFile: 'No ready-made file with notes? The online editor lets you write a melody from scratch.',

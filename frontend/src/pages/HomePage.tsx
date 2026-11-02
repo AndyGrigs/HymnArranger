@@ -31,6 +31,9 @@ type ResumeState = {
   resumeParams: Record<string, unknown>
 } | null
 
+/** Типові фактури для міксу: контрастна пара (акорди + арпеджіо). */
+const MIX_DEFAULT = ['chord_melody', 'sixteenths_arp']
+
 const INPUT_TABS: { id: InputMode; labelKey: string }[] = [
   { id: 'upload', labelKey: 'home.page.tabUpload' },
   { id: 'abc',    labelKey: 'home.page.tabAbc' },
@@ -76,6 +79,8 @@ export function HomePage() {
   const [varyBass, setVaryBass] = useState(true)
   const [strophes, setStrophes] = useState(5)
   const [coda,     setCoda]     = useState(true)
+  const [mixPresets, setMixPresets] = useState<string[]>([])
+  const [barsPerPhrase, setBarsPerPhrase] = useState(4)
 
   const handleAbcReady = useCallback((getAbc: () => string) => {
     abcGetRef.current = getAbc
@@ -96,6 +101,11 @@ export function HomePage() {
       const resumedPreset = resumeRef.current?.resumeParams?.preset as string | undefined
       const match = resumedPreset && analysis.analysis.presets.find(p => p.id === resumedPreset)
       setPreset(match ? match.id : analysis.analysis.presets[0].id)
+
+      // міксу за замовчуванням — акордова мелодія та арпеджіо, якщо вони є для цього розміру
+      const mixable = analysis.analysis.presets.filter(p => p.mode !== 'two_voice_arp').map(p => p.id)
+      const preferred = MIX_DEFAULT.filter(id => mixable.includes(id))
+      setMixPresets(preferred.length >= 2 ? preferred : mixable.slice(0, 2))
     }
   }, [analysis.analysis])
 
@@ -105,7 +115,9 @@ export function HomePage() {
 
   async function handleGenerate() {
     if (!analysis.source) return
-    arrangement.generate(analysis.source, mode, { preset, seed, varyBass, strophes, coda })
+    arrangement.generate(analysis.source, mode, {
+      preset, seed, varyBass, strophes, coda, mixPresets, barsPerPhrase,
+    })
   }
 
   const displayTempo = (() => {
@@ -210,6 +222,10 @@ export function HomePage() {
                     onStrophesChange={setStrophes}
                     coda={coda}
                     onCodaChange={setCoda}
+                    mixPresets={mixPresets}
+                    onMixPresetsChange={setMixPresets}
+                    barsPerPhrase={barsPerPhrase}
+                    onBarsPerPhraseChange={setBarsPerPhrase}
                     onGenerate={handleGenerate}
                     loading={arrangement.loading}
                     isLoggedIn={!!user}

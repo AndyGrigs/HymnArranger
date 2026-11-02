@@ -4,7 +4,7 @@ import type { ScoreSource } from '../api'
 import { useAuth } from './useAuth'
 import i18n from '../i18n'
 
-export type Mode = 'suite' | 'preset' | 'merge' | 'style'
+export type Mode = 'suite' | 'preset' | 'merge' | 'mix' | 'style'
 
 /** Рядок у списку розділів під нотами. */
 export interface SectionRow {
@@ -29,6 +29,9 @@ interface Options {
   varyBass?: boolean
   strophes?: number
   coda?: boolean
+  /** Пресети міксу в порядку чергування. */
+  mixPresets?: string[]
+  barsPerPhrase?: number
 }
 
 export function useArrangement() {
@@ -77,6 +80,23 @@ export function useArrangement() {
             mode,
             params: { preset },
             sections: [{ label: data.name, detail: i18n.t('panels.arrangement.tempo', { tempo: data.tempo }) }],
+          }
+        } else if (mode === 'mix') {
+          const params = {
+            presets: (opts.mixPresets ?? []).join(','),
+            bars_per_phrase: opts.barsPerPhrase ?? 4,
+          }
+          const data = await api.mix(source, params, controller.signal, tok)
+          next = {
+            musicxml: data.musicxml,
+            abc: data.abc,
+            title: i18n.t('panels.arrangement.mixTitle'),
+            mode,
+            params,
+            sections: data.sections.map((s) => ({
+              label: `${s.index}. ${s.name}`,
+              detail: i18n.t('panels.arrangement.mixBars', { from: s.from_bar, to: s.to_bar }),
+            })),
           }
         } else if (mode === 'style') {
           const params = {

@@ -34,6 +34,7 @@ from .parsing import parse_input
 from .assembly import (arrange, arrange_multi, save, to_musicxml_string,
                        to_abc_string)  # , midi_bytes)
 from .suite import arrange_suite, plan_suite
+from .mixing import arrange_mixed, describe_phrases
 from . import styles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -224,6 +225,14 @@ class SuiteOut(BaseModel):
     meter: str
     meter_family: str
     seed: Optional[int]
+    sections: List[dict]
+
+
+class MixOut(BaseModel):
+    musicxml: str
+    abc: Optional[str] = None
+    meter: str
+    bars_per_phrase: int
     sections: List[dict]
 
 
@@ -478,6 +487,76 @@ async def suite(request: Request,
             sections=[{'index': i, 'preset': preset, 'name': cfg.name,
                        'tempo': cfg.tempo, 'bass': cfg.lh_pattern}
                       for i, (preset, cfg) in enumerate(sections)],
+        )
+    finally:
+        os.unlink(path)
+
+
+MIX_MIN_PRESETS = 2
+MIX_MAX_PRESETS = 8
+
+
+@app.post('/mix', response_model=MixOut)
+async def mix(request: Request,
+              presets: str = Query(..., description='Пресети через кому: a,b,c — фактури чергуються по фразах'),
+              bars_per_phrase: int = Query(4, ge=1, le=16),
+              db: Session = Depends(get_db),
+              current_user: Optional[User] = Depends(get_current_user_optional)):
+    """Одна варіація, де кожна фраза має свою фактуру (по колу з переліку)."""
+    path = await _read_source(request)
+    try:
+        ctx = _context(path)
+        available = meters.presets(ctx.ts)
+        names = [n.strip() for n in presets.split(',') if n.strip()]
+        if not MIX_MIN_PRESETS <= len(names) <= MIX_MAX_PRESETS:
+            raise HTTPException(
+                400, f'Для міксу потрібно від {MIX_MIN_PRESETS} до {MIX_MAX_PRESETS} пресетів')
+        for n in names:
+            if n not in available:
+                raise HTTPException(
+                    400, f'Пресет {n!r} недоступний для розміру {ctx.ts.ratioString}. '
+                         f'Доступні: {", ".join(available)}')
+            if available[n].mode == 'two_voice_arp':
+                raise HTTPException(
+                    400, f'Пресет {n!r} має два голоси — у міксі він не підтримується')
+        _check_measures(ctx)
+        cfgs = [available[n] for n in names]
+
+        try:
+            score = await _run_sync(functools.partial(
+                arrange_mixed, path, cfgs, bars_per_phrase=bars_per_phrase, verbose=False))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        musicxml_str = to_musicxml_string(score)
+
+        if current_user is not None:
+            _source_abc_m: Optional[str] = None
+            try:
+                import music21 as _m21
+                _source_abc_m = to_abc_string(_m21.converter.parse(path))
+            except Exception as exc:
+                logger.warning('ABC export failed (source, mix): %s', exc)
+            save_generated_work(
+                db, current_user,
+                title=f'Mix ({ctx.ts.ratioString})',
+                input_params={'kind': 'mix', 'presets': names,
+                              'bars_per_phrase': bars_per_phrase,
+                              'meter': ctx.ts.ratioString},
+                musicxml_content=musicxml_str,
+                source_abc=_source_abc_m,
+            )
+
+        try:
+            abc_str_m: Optional[str] = to_abc_string(score)
+        except Exception as exc:
+            logger.warning('ABC export failed (output, mix): %s', exc)
+            abc_str_m = None
+        return MixOut(
+            musicxml=musicxml_str,
+            abc=abc_str_m,
+            meter=ctx.ts.ratioString,
+            bars_per_phrase=bars_per_phrase,
+            sections=describe_phrases(ctx, names, cfgs, bars_per_phrase),
         )
     finally:
         os.unlink(path)

@@ -20,6 +20,11 @@ interface Props {
   onStrophesChange: (value: number) => void
   coda: boolean
   onCodaChange: (value: boolean) => void
+  /** Пресети міксу в порядку чергування по фразах. */
+  mixPresets: string[]
+  onMixPresetsChange: (value: string[]) => void
+  barsPerPhrase: number
+  onBarsPerPhraseChange: (value: number) => void
   onGenerate: () => void
   loading: boolean
   isLoggedIn?: boolean
@@ -27,17 +32,32 @@ interface Props {
   bare?: boolean
 }
 
+const BARS_PER_PHRASE = [1, 2, 4, 8]
+/** Мінімум фактур, щоб було що чергувати. */
+const MIX_MIN = 2
+/** Пресети з двома голосами у міксі не підтримуються (див. hymnarranger/mixing.py). */
+const MIX_EXCLUDED_MODE = 'two_voice_arp'
+
 const MODES: { id: Mode; labelKey: string; hintKey: string }[] = [
   { id: 'suite',  labelKey: 'panels.generate.modeSuite',  hintKey: 'panels.generate.modeSuiteHint'  },
   { id: 'preset', labelKey: 'panels.generate.modePreset', hintKey: 'panels.generate.modePresetHint' },
   { id: 'merge',  labelKey: 'panels.generate.modeMerge',  hintKey: 'panels.generate.modeMergeHint'  },
+  { id: 'mix',    labelKey: 'panels.generate.modeMix',    hintKey: 'panels.generate.modeMixHint'    },
   // Тимчасово вимкнено — стильовий модуль потребує доопрацювання
   // { id: 'style',  label: 'Стиль Сакали',        hint: 'строфи, хроматичні зв\'язки, кода' },
 ]
 
 export function GeneratePanel(props: Props) {
   const { t } = useTranslation()
-  const { analysis, mode, loading, bare, isLoggedIn } = props
+  const { analysis, mode, loading, bare, isLoggedIn, mixPresets } = props
+  const mixOptions = analysis.presets.filter((p) => p.mode !== MIX_EXCLUDED_MODE)
+  const mixInvalid = mode === 'mix' && mixPresets.length < MIX_MIN
+
+  function toggleMixPreset(id: string) {
+    props.onMixPresetsChange(
+      mixPresets.includes(id) ? mixPresets.filter((x) => x !== id) : [...mixPresets, id],
+    )
+  }
 
   const body = (
     <>
@@ -123,6 +143,63 @@ export function GeneratePanel(props: Props) {
         </div>
       )}
 
+      {mode === 'mix' && (
+        <div className="mt-5 space-y-3.5 border-t border-[#ecebe6] pt-4.5">
+          <div>
+            <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">
+              {t('panels.generate.mixPresets')}
+            </span>
+            <ul className="mt-1.5 max-h-56 space-y-1 overflow-auto">
+              {mixOptions.map((p) => {
+                const order = mixPresets.indexOf(p.id)
+                const selected = order >= 0
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggleMixPreset(p.id)}
+                      aria-pressed={selected}
+                      className={`flex w-full items-center gap-2.5 rounded-lg border px-2.75 py-1.75 text-left text-[13px] transition ${
+                        selected
+                          ? 'border-accent bg-tint text-ink'
+                          : 'border-[#e3e1da] bg-white text-[#454a52] hover:border-[#b6bac2]'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-mono text-[11px] ${
+                          selected ? 'bg-accent text-white' : 'border border-[#dcdad2] text-transparent'
+                        }`}
+                      >
+                        {selected ? order + 1 : '·'}
+                      </span>
+                      {p.name}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            <p className={`mt-1.75 text-xs leading-normal ${mixInvalid ? 'text-accent' : 'text-[#8a9099]'}`}>
+              {t('panels.generate.mixPresetsHint', { min: MIX_MIN })}
+            </p>
+          </div>
+
+          <label className="block">
+            <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">
+              {t('panels.generate.mixBars')}
+            </span>
+            <select
+              value={props.barsPerPhrase}
+              onChange={(e) => props.onBarsPerPhraseChange(Number(e.target.value))}
+              className="mt-1.5 w-full rounded-lg border border-[#dcdad2] bg-white px-3 py-2 text-[13.5px] text-ink outline-none focus:border-accent"
+            >
+              {BARS_PER_PHRASE.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
       {/* Тимчасово вимкнено — стильовий модуль потребує доопрацювання
       {mode === 'style' && (
         <div className="mt-5 space-y-3 border-t border-[#ecebe6] pt-4.5">
@@ -157,7 +234,7 @@ export function GeneratePanel(props: Props) {
       <button
         type="button"
         onClick={props.onGenerate}
-        disabled={loading}
+        disabled={loading || mixInvalid}
         className="mt-5 flex w-full items-center justify-center gap-2.25 rounded-[10px] bg-accent py-3.25 text-[14.5px] font-medium tracking-[.01em] text-white transition hover:brightness-110 disabled:opacity-50"
       >
         {loading ? <Spinner /> : <Wand2 className="h-3.75 w-3.75" />}

@@ -76,6 +76,31 @@ export interface MergeOut {
   sections: MergeSection[]
 }
 
+/** Одна фраза у відповіді /mix: яка фактура звучить у яких тактах. */
+export interface MixSection {
+  index: number
+  preset: string
+  name: string
+  from_bar: number
+  to_bar: number
+}
+
+/** POST /mix */
+export interface MixOut {
+  musicxml: string
+  abc?: string
+  meter: string
+  bars_per_phrase: number
+  sections: MixSection[]
+}
+
+/** Параметри міксу: пресети через кому чергуються по фразах. */
+export interface MixParams {
+  presets: string
+  bars_per_phrase?: number
+  [key: string]: unknown
+}
+
 /** Один розділ у відповіді /style. */
 export interface StyleSection {
   index: number

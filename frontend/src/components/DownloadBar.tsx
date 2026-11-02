@@ -16,6 +16,7 @@ const SUFFIX_KEY: Record<Mode, string> = {
   suite: 'panels.download.suffixSuite',
   preset: 'panels.download.suffixPreset',
   merge: 'panels.download.suffixMerge',
+  mix: 'panels.download.suffixMix',
   style: 'panels.download.suffixStyle',
 }
 

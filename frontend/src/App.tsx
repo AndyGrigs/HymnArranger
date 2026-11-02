@@ -13,6 +13,7 @@ import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { MyWorksPage } from './pages/MyWorksPage'
 import { SupportPage } from './pages/SupportPage'
 import { AccordionEditorPage } from './pages/AccordionEditorPage'
+import { MelodiesPage } from './pages/MelodiesPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Spinner } from './components/ui/Spinner'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/works" element={<ProtectedRoute><MyWorksPage /></ProtectedRoute>} />
+            <Route path="/melodies" element={<ErrorBoundary label="Мелодії"><MelodiesPage /></ErrorBoundary>} />
             <Route path="/accordion" element={<ErrorBoundary label="Редактор для баяна"><AccordionEditorPage /></ErrorBoundary>} />
             <Route path="/support" element={<SupportPage />} />
           </Routes>

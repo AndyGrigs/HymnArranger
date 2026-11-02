@@ -1,29 +1,33 @@
 import { useState } from 'react'
 import { User, LogOut, Menu, X } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
+import { LanguageSwitcher } from './LanguageSwitcher'
 
-const NAV_LINKS: { id: string; label: string; to?: string }[] = [
-  { id: 'home',     label: 'Головна',       to: '/' },
-  { id: 'how',      label: 'Як це працює',  to: '/how' },
-  { id: 'melodies',  label: 'Спробувати',  to: '/melodies' },
-  { id: 'accordion', label: 'Редактор',    to: '/accordion' },
-  { id: 'examples', label: 'Приклади', to: '/examples' },
-  { id: 'support',  label: 'Підтримка', to: '/support' },
+const NAV_LINKS: { id: string; to?: string }[] = [
+  { id: 'home',      to: '/' },
+  { id: 'how',       to: '/how' },
+  { id: 'melodies',  to: '/melodies' },
+  { id: 'accordion', to: '/accordion' },
+  { id: 'examples',  to: '/examples' },
+  { id: 'support',   to: '/support' },
 ]
 
 function StaveIcon() {
+  const { t } = useTranslation()
   return (
     <img
       src="/icons/accordion.svg"
-      alt="Баян"
-      title="Ілюстрація: Zero Gravity, CC BY-SA 3.0, через Wikimedia Commons"
+      alt={t('nav.accordionAlt')}
+      title={t('nav.iconCredit')}
       className="h-9 w-auto shrink-0 object-contain"
     />
   )
 }
 
 export function Navbar() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const location = useLocation()
   const { user, logout } = useAuth()
@@ -55,10 +59,10 @@ export function Navbar() {
                       : 'text-[#767c86] hover:text-ink'
                   }`}
                 >
-                  {link.label}
+                  {t(`nav.${link.id}`)}
                 </Link>
               ) : (
-                <span className="text-sm text-[#b3b7be]">{link.label}</span>
+                <span className="text-sm text-[#b3b7be]">{t(`nav.${link.id}`)}</span>
               )}
             </li>
           ))}
@@ -66,18 +70,19 @@ export function Navbar() {
 
         {/* Right actions */}
         <div className="ml-auto flex items-center gap-2.5">
+          <LanguageSwitcher />
           {user ? (
             <>
               <Link
                 to="/works"
                 className="hidden rounded-lg px-3 py-1.75 text-sm text-[#454a52] transition hover:bg-[#ecebe6] hover:text-ink sm:block"
               >
-                Мої роботи
+                {t('nav.myWorks')}
               </Link>
               <button
                 type="button"
                 onClick={logout}
-                title="Вийти"
+                title={t('nav.logout')}
                 className="hidden items-center gap-2.25 rounded-full border border-[#dcdad2] bg-white px-3.5 py-1.5 pl-2 text-sm text-[#454a52] transition hover:border-accent hover:text-ink sm:flex"
               >
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-tint">
@@ -93,7 +98,7 @@ export function Navbar() {
                 to="/works"
                 className="hidden rounded-lg px-3 py-1.75 text-sm text-[#454a52] transition hover:bg-[#ecebe6] hover:text-ink sm:block"
               >
-                Мої роботи
+                {t('nav.myWorks')}
               </Link>
               <Link
                 to="/login"
@@ -102,7 +107,7 @@ export function Navbar() {
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-tint">
                   <User className="h-3.25 w-3.25 text-accent" />
                 </span>
-                Увійти
+                {t('nav.login')}
               </Link>
             </>
           )}
@@ -111,7 +116,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            aria-label="Меню"
+            aria-label={t('nav.menu')}
             className="rounded-full p-2 text-[#454a52] transition hover:bg-[#ecebe6] hover:text-ink md:hidden"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -135,11 +140,11 @@ export function Navbar() {
                         : 'text-[#454a52] hover:bg-[#ecebe6] hover:text-ink'
                     }`}
                   >
-                    {link.label}
+                    {t(`nav.${link.id}`)}
                   </Link>
                 ) : (
                   <span className="block rounded-lg px-3 py-2.5 text-sm text-[#b3b7be]">
-                    {link.label}
+                    {t(`nav.${link.id}`)}
                   </span>
                 )}
               </li>
@@ -151,7 +156,7 @@ export function Navbar() {
               onClick={close}
               className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[#454a52] transition hover:bg-[#ecebe6]"
             >
-              Мої роботи
+              {t('nav.myWorks')}
             </Link>
             {user ? (
               <button
@@ -162,7 +167,7 @@ export function Navbar() {
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-tint">
                   <User className="h-3.25 w-3.25 text-accent" />
                 </span>
-                <span>{user.email} — вийти</span>
+                <span>{t('nav.logoutWithEmail', { email: user.email })}</span>
               </button>
             ) : (
               <Link
@@ -173,7 +178,7 @@ export function Navbar() {
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-tint">
                   <User className="h-3.25 w-3.25 text-accent" />
                 </span>
-                Увійти
+                {t('nav.login')}
               </Link>
             )}
           </div>

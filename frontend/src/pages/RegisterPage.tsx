@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { UserPlus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 import { ApiError } from '../api'
 import { Spinner } from '../components/ui/Spinner'
@@ -8,6 +9,7 @@ import { Spinner } from '../components/ui/Spinner'
 const INPUT = 'w-full rounded-lg border border-[#dcdad2] bg-white px-4 py-3 text-[14.5px] outline-none transition focus:border-accent'
 
 export function RegisterPage() {
+  const { t } = useTranslation()
   const { register } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -21,7 +23,7 @@ export function RegisterPage() {
     setError(null)
 
     if (password !== confirmPassword) {
-      setError('Паролі не збігаються')
+      setError(t('auth.passwordMismatch'))
       return
     }
 
@@ -30,7 +32,7 @@ export function RegisterPage() {
       await register(email, password)
       navigate('/verify-email', { state: { email } })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не вдалося зареєструватись')
+      setError(err instanceof ApiError ? err.message : t('auth.register.failed'))
     } finally {
       setLoading(false)
     }
@@ -39,11 +41,11 @@ export function RegisterPage() {
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-[#e3e1da] bg-white p-8 shadow-sm">
-        <h1 className="font-display text-2xl font-bold text-ink">Реєстрація</h1>
+        <h1 className="font-display text-2xl font-bold text-ink">{t('auth.register.title')}</h1>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm text-muted" htmlFor="email">Пошта</label>
+            <label className="mb-1.5 block text-sm text-muted" htmlFor="email">{t('auth.email')}</label>
             <input
               id="email"
               type="email"
@@ -55,7 +57,7 @@ export function RegisterPage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm text-muted" htmlFor="password">Пароль</label>
+            <label className="mb-1.5 block text-sm text-muted" htmlFor="password">{t('auth.password')}</label>
             <input
               id="password"
               type="password"
@@ -68,7 +70,7 @@ export function RegisterPage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm text-muted" htmlFor="confirmPassword">Повторіть пароль</label>
+            <label className="mb-1.5 block text-sm text-muted" htmlFor="confirmPassword">{t('auth.confirmPassword')}</label>
             <input
               id="confirmPassword"
               type="password"
@@ -93,13 +95,13 @@ export function RegisterPage() {
             className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-[14.5px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
             {loading ? <Spinner /> : <UserPlus className="h-4 w-4" />}
-            {loading ? 'Реєструю…' : 'Зареєструватись'}
+            {loading ? t('auth.register.submitting') : t('auth.register.submit')}
           </button>
         </form>
 
         <p className="mt-5 text-sm text-muted">
-          Вже є акаунт?{' '}
-          <Link to="/login" className="text-accent hover:underline">Увійти</Link>
+          {t('auth.register.haveAccount')}{' '}
+          <Link to="/login" className="text-accent hover:underline">{t('auth.register.login')}</Link>
         </p>
       </div>
     </div>

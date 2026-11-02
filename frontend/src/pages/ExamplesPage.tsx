@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Music4 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { SheetViewer } from '../components/SheetViewer'
 import { Spinner } from '../components/ui/Spinner'
 import { fetchExampleXml, fetchExamples, type ExampleMeta } from '../lib/examples'
 
 export function ExamplesPage() {
+  const { t } = useTranslation()
   const [examples, setExamples] = useState<ExampleMeta[] | null>(null)
   const [listError, setListError] = useState<string | null>(null)
 
@@ -34,9 +36,9 @@ export function ExamplesPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <header className="mb-8">
-        <h1 className="font-display text-3xl text-accent">Приклади аранжувань</h1>
+        <h1 className="font-display text-3xl text-accent">{t('editors.examples.title')}</h1>
         <p className="mt-1 text-muted">
-          Готові партитури — щоб оцінити результат без завантаження власних нот
+          {t('editors.examples.subtitle')}
         </p>
       </header>
 
@@ -49,14 +51,13 @@ export function ExamplesPage() {
       {!examples && !listError && (
         <div className="flex items-center gap-2 py-12 text-muted">
           <Spinner />
-          <span className="text-sm">Завантажую список…</span>
+          <span className="text-sm">{t('editors.examples.loadingList')}</span>
         </div>
       )}
 
       {examples && examples.length === 0 && (
         <p className="text-sm text-muted">
-          Прикладів поки немає — додай файли у <code>public/scores/</code> і
-          опиши їх у <code>manifest.json</code>.
+          {t('editors.examples.emptyPrefix')} <code>public/scores/</code> {t('editors.examples.emptyMiddle')} <code>manifest.json</code>.
         </p>
       )}
 
@@ -98,7 +99,7 @@ export function ExamplesPage() {
           {loadingXml && (
             <div className="flex items-center gap-2 py-8 text-muted">
               <Spinner />
-              <span className="text-sm">Завантажую партитуру…</span>
+              <span className="text-sm">{t('editors.examples.loadingScore')}</span>
             </div>
           )}
 

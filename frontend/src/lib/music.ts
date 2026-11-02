@@ -1,3 +1,5 @@
+import i18n from '../i18n'
+
 /** Тривалість такту у чвертках: "3/4" → 3, "6/8" → 3, "4/4" → 4. */
 export function barQuarterLength(meter: string): number {
   const [num, den] = meter.split('/').map(Number)
@@ -5,28 +7,32 @@ export function barQuarterLength(meter: string): number {
   return (num * 4) / den
 }
 
-const NOTE_UA: Record<string, string> = {
-  C: 'До', D: 'Ре', E: 'Мі', F: 'Фа', G: 'Соль', A: 'Ля', B: 'Сі',
-}
-
 /**
  * music21 віддає тональність як "D major" або "d minor" (мінор — з малої).
- * Перекладаємо у звичний для музиканта вигляд: "Ре мажор".
+ * Українською: "Ре мажор", "Ре-дієз мінор"; німецькою: "D-Dur", "cis-Moll".
  */
 export function formatKey(raw: string): string {
   const match = raw.trim().match(/^([A-Ga-g])([#\-b]*)\s*(major|minor)?$/)
   if (!match) return raw
 
   const [, letter, accidentals, mode] = match
-  const base = NOTE_UA[letter.toUpperCase()] ?? letter
+  const base = letter.toUpperCase()
+  const sharps = (accidentals.match(/#/g) ?? []).length
+  const flats = (accidentals.match(/[-b]/g) ?? []).length
+  const modeName = mode ? i18n.t(`panels.music.${mode}`) : ''
 
-  const marks = accidentals
-    .split('')
-    .map((ch) => (ch === '#' ? '-дієз' : '-бемоль'))
-    .join('')
+  if (i18n.language === 'de') {
+    // У німецькій B — це сі-бемоль, а сі-бекар — H; бемолі: Es, As, решта + "es".
+    let name = i18n.t(`panels.music.notes.${base}`)
+    if (flats > 0 && base === 'B') name = 'B' + 'es'.repeat(flats - 1)
+    else if (flats > 0) name += (base === 'E' || base === 'A' ? 's' : 'es') + 'es'.repeat(flats - 1)
+    name += i18n.t('panels.music.sharp').repeat(sharps)
+    if (mode === 'minor') name = name.charAt(0).toLowerCase() + name.slice(1)
+    return modeName ? `${name}-${modeName}` : name
+  }
 
-  const modeUa = mode === 'minor' ? 'мінор' : mode === 'major' ? 'мажор' : ''
-  return `${base}${marks}${modeUa ? ' ' + modeUa : ''}`
+  const marks = i18n.t('panels.music.sharp').repeat(sharps) + i18n.t('panels.music.flat').repeat(flats)
+  return `${i18n.t(`panels.music.notes.${base}`)}${marks}${modeName ? ' ' + modeName : ''}`
 }
 
 /**
@@ -49,7 +55,7 @@ export function offsetToPosition(
 
 /** Розмір файлу для показу користувачу. */
 export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} Б`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} КБ`
-  return `${(bytes / 1024 / 1024).toFixed(1)} МБ`
+  if (bytes < 1024) return `${bytes} ${i18n.t('panels.music.bytes')}`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} ${i18n.t('panels.music.kb')}`
+  return `${(bytes / 1024 / 1024).toFixed(1)} ${i18n.t('panels.music.mb')}`
 }

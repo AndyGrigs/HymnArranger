@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../api'
 import type { ScoreSource } from '../api'
 import { useAuth } from './useAuth'
+import i18n from '../i18n'
 
 export type Mode = 'suite' | 'preset' | 'merge' | 'style'
 
@@ -58,12 +59,12 @@ export function useArrangement() {
           next = {
             musicxml: data.musicxml,
             abc: data.abc,
-            title: 'Тема з варіаціями',
+            title: i18n.t('panels.arrangement.suiteTitle'),
             mode,
             params,
             sections: data.sections.map((s) => ({
               label: `${s.index}. ${s.name}`,
-              detail: `${s.tempo} уд/хв · бас: ${s.bass}`,
+              detail: i18n.t('panels.arrangement.tempoBass', { tempo: s.tempo, bass: s.bass }),
             })),
           }
         } else if (mode === 'preset') {
@@ -75,7 +76,7 @@ export function useArrangement() {
             title: data.name,
             mode,
             params: { preset },
-            sections: [{ label: data.name, detail: `${data.tempo} уд/хв` }],
+            sections: [{ label: data.name, detail: i18n.t('panels.arrangement.tempo', { tempo: data.tempo }) }],
           }
         } else if (mode === 'style') {
           const params = {
@@ -87,12 +88,12 @@ export function useArrangement() {
           next = {
             musicxml: data.musicxml,
             abc: data.abc,
-            title: `Стиль Сакали · ${data.key} · ${data.meter}`,
+            title: i18n.t('panels.arrangement.styleTitle', { key: data.key, meter: data.meter }),
             mode,
             params,
             sections: data.sections.map((s) => ({
               label: `${s.index}. ${s.name}`,
-              detail: s.octave ? 'октавою вище' : '',
+              detail: s.octave ? i18n.t('panels.arrangement.octaveUp') : '',
             })),
           }
         } else {
@@ -100,7 +101,7 @@ export function useArrangement() {
           next = {
             musicxml: data.musicxml,
             abc: data.abc,
-            title: 'Порівняння пресетів',
+            title: i18n.t('panels.arrangement.mergeTitle'),
             mode,
             params: {},
             sections: data.sections.map((s) => ({
@@ -117,7 +118,7 @@ export function useArrangement() {
         setError(
           err instanceof ApiError
             ? err.message
-            : 'Генерація не вдалася. Перевір, чи працює бекенд.',
+            : i18n.t('panels.arrangement.failed'),
         )
       } finally {
         if (!controller.signal.aborted) setLoading(false)

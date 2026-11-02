@@ -3,6 +3,8 @@
  * при помилці валідації. Зводимо обидва випадки до одного рядка,
  * щоб компонент показував повідомлення, а не [object Object].
  */
+import i18n from '../i18n'
+
 export class ApiError extends Error {
   readonly status: number
 
@@ -37,5 +39,5 @@ export function extractDetail(payload: unknown, status: number): string {
     }
   }
 
-  return `Сервер повернув помилку ${status}`
+  return i18n.t('panels.common.serverError', { status })
 }

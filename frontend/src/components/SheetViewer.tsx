@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
 import { FileText, Minus, Plus, ScrollText } from 'lucide-react'
 import { Spinner } from './ui/Spinner'
@@ -14,6 +15,7 @@ const ZOOM_STEP = 0.1
 type Layout = 'a4' | 'endless'
 
 export function SheetViewer({ musicxml }: Props) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null)
   const [zoom, setZoom] = useState(0.7)
@@ -61,7 +63,7 @@ export function SheetViewer({ musicxml }: Props) {
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        setFailed(err instanceof Error ? err.message : 'Не вдалося намалювати ноти')
+        setFailed(err instanceof Error ? err.message : t('panels.sheet.drawFailed'))
         setRendering(false)
       })
 
@@ -70,6 +72,7 @@ export function SheetViewer({ musicxml }: Props) {
       osmdRef.current = null
       container.innerHTML = ''
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musicxml, layout])
 
   useEffect(() => {
@@ -114,7 +117,7 @@ export function SheetViewer({ musicxml }: Props) {
             }`}
           >
             <FileText className="h-4 w-4" />
-            Аркуші A4
+            {t('panels.sheet.a4')}
           </button>
           <button
             type="button"
@@ -124,7 +127,7 @@ export function SheetViewer({ musicxml }: Props) {
             }`}
           >
             <ScrollText className="h-4 w-4" />
-            Стрічка
+            {t('panels.sheet.endless')}
           </button>
         </div>
 
@@ -134,7 +137,7 @@ export function SheetViewer({ musicxml }: Props) {
             onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)))}
             disabled={zoom <= ZOOM_MIN}
             className={iconButton}
-            aria-label="Зменшити"
+            aria-label={t('panels.sheet.zoomOut')}
           >
             <Minus className="h-4 w-4" />
           </button>
@@ -146,7 +149,7 @@ export function SheetViewer({ musicxml }: Props) {
             onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)))}
             disabled={zoom >= ZOOM_MAX}
             className={iconButton}
-            aria-label="Збільшити"
+            aria-label={t('panels.sheet.zoomIn')}
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -156,11 +159,11 @@ export function SheetViewer({ musicxml }: Props) {
       {rendering && (
         <div className="flex items-center justify-center gap-2 py-16 text-muted">
           <Spinner />
-          <span className="text-sm">Малюю ноти…</span>
+          <span className="text-sm">{t('panels.sheet.drawing')}</span>
         </div>
       )}
 
-      {failed && <p className="px-4 py-8 text-sm text-accent">Ноти не відобразились: {failed}</p>}
+      {failed && <p className="px-4 py-8 text-sm text-accent">{t('panels.sheet.notShown', { reason: failed })}</p>}
 
       <div className="overflow-x-auto" style={{ display: rendering || failed ? 'none' : 'block' }}>
         <div className="p-4 pr-8">

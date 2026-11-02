@@ -1,30 +1,33 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
-const NAV_COL: { label: string; to?: string }[] = [
-  { label: 'Головна',      to: '/'    },
-  { label: 'Як це працює', to: '/how' },
-  { label: 'Приклади',  to: '/examples' },
-  { label: 'Підтримка', to: '/support' },
+const NAV_COL: { key: string; to: string }[] = [
+  { key: 'home',     to: '/'         },
+  { key: 'how',      to: '/how'      },
+  { key: 'examples', to: '/examples' },
+  { key: 'support',  to: '/support'  },
 ]
 
-const ACCOUNT_COL: { label: string; to?: string }[] = [
-  { label: 'Увійти',       to: '/login'    },
-  { label: 'Реєстрація',   to: '/register' },
-  { label: 'Мої роботи',   to: '/works'    },
+const ACCOUNT_COL: { key: string; to: string }[] = [
+  { key: 'login',    to: '/login'    },
+  { key: 'register', to: '/register' },
+  { key: 'myWorks',  to: '/works'    },
 ]
 
 function StaveIcon() {
+  const { t } = useTranslation()
   return (
     <img
       src="/icons/accordion.svg"
-      alt="Баян"
-      title="Ілюстрація: Zero Gravity, CC BY-SA 3.0, через Wikimedia Commons"
+      alt={t('nav.accordionAlt')}
+      title={t('nav.iconCredit')}
       className="h-8 w-auto shrink-0 object-contain"
     />
   )
 }
 
 export function Footer() {
+  const { t } = useTranslation()
   const year = new Date().getFullYear()
 
   return (
@@ -41,29 +44,24 @@ export function Footer() {
               </span>
             </Link>
             <p className="mt-3.5 text-sm leading-relaxed text-[#767c86]">
-              Автоматична гармонізація церковних гімнів. Завантажте мелодію — отримайте
-              повну партитуру за секунди.
+              {t('nav.footer.tagline')}
             </p>
           </div>
 
           {/* Navigation column */}
           <div>
             <h3 className="mb-3.5 font-mono text-[10.5px] uppercase tracking-[.14em] text-[#a0a4ac]">
-              Навігація
+              {t('nav.footer.navigation')}
             </h3>
             <ul className="space-y-2.5">
-              {NAV_COL.map(({ label, to }) => (
-                <li key={label}>
-                  {to ? (
-                    <Link
-                      to={to}
-                      className="text-sm text-[#5a6070] transition hover:text-accent"
-                    >
-                      {label}
-                    </Link>
-                  ) : (
-                    <span className="text-sm text-[#b3b7be]">{label}</span>
-                  )}
+              {NAV_COL.map(({ key, to }) => (
+                <li key={key}>
+                  <Link
+                    to={to}
+                    className="text-sm text-[#5a6070] transition hover:text-accent"
+                  >
+                    {t(`nav.${key}`)}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -72,21 +70,17 @@ export function Footer() {
           {/* Account column */}
           <div>
             <h3 className="mb-3.5 font-mono text-[10.5px] uppercase tracking-[.14em] text-[#a0a4ac]">
-              Акаунт
+              {t('nav.footer.account')}
             </h3>
             <ul className="space-y-2.5">
-              {ACCOUNT_COL.map(({ label, to }) => (
-                <li key={label}>
-                  {to ? (
-                    <Link
-                      to={to}
-                      className="text-sm text-[#5a6070] transition hover:text-accent"
-                    >
-                      {label}
-                    </Link>
-                  ) : (
-                    <span className="text-sm text-[#b3b7be]">{label}</span>
-                  )}
+              {ACCOUNT_COL.map(({ key, to }) => (
+                <li key={key}>
+                  <Link
+                    to={to}
+                    className="text-sm text-[#5a6070] transition hover:text-accent"
+                  >
+                    {t(`nav.${key}`)}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -96,10 +90,10 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[#e3e1da] pt-6">
           <p className="text-[12.5px] text-[#a0a4ac]">
-            © {year} HymnArranger. Всі права захищені.
+            {t('nav.footer.rights', { year })}
           </p>
           <p className="text-[12px] text-[#b3b7be]">
-            Іконка баяна:{' '}
+            {t('nav.footer.iconBy')}{' '}
             <a
               href="https://commons.wikimedia.org/wiki/File:Accordion_in_SVG_format_(vector).svg"
               target="_blank"
@@ -117,10 +111,10 @@ export function Footer() {
             >
               CC BY-SA 3.0
             </a>
-            , через Wikimedia Commons
+            , {t('nav.footer.viaCommons')}
           </p>
           <p className="text-[12px] text-[#b3b7be]">
-            Зроблено з любов'ю до церковної музики
+            {t('nav.footer.madeWithLove')}
           </p>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const AbcPaper = lazy(() => import('./AbcPaper').then(m => ({ default: m.AbcPaper })))
 
@@ -12,6 +13,7 @@ V:2 clef=bass
 [V:2] F,,2 [A,,C,F,]4 | C,,2 [C,E,G,]4 |`
 
 export function Hero() {
+  const { t } = useTranslation()
   return (
     <header className="relative overflow-hidden flex items-center" style={{ minHeight: 620 }}>
       {/* Photo background — right 58% */}
@@ -28,7 +30,7 @@ export function Hero() {
       >
         <img
           src="/bayan.jpg"
-          alt="Баян на столі"
+          alt={t('home.hero.photoAlt')}
           className="h-full w-full object-cover"
           style={{
             objectPosition: '48% 57%',
@@ -62,30 +64,30 @@ export function Hero() {
           {/* Left: copy */}
           <div>
             <p className="font-mono text-[11px] font-medium uppercase text-accent" style={{ letterSpacing: '.18em' }}>
-              Аранжування для баяна
+              {t('home.hero.eyebrow')}
             </p>
             <h1
               className="mt-4.5 font-display font-medium text-ink"
               style={{ fontSize: 60, lineHeight: 1.06, letterSpacing: '-.015em', textWrap: 'pretty' } as React.CSSProperties}
             >
-              Мелодія гімну —<br />
-              <span className="italic text-accent">повна партитура</span> для баяна
+              {t('home.hero.titleLine1')}<br />
+              <span className="italic text-accent">{t('home.hero.titleAccent')}</span> {t('home.hero.titleLine2')}
             </h1>
             <p
               className="mt-5.5 text-base leading-[1.7] text-muted"
               style={{ maxWidth: 470, textWrap: 'pretty' } as React.CSSProperties}
             >
-              Завантаж мелодію з акордовою послідовністю або набери її в редакторі ABC — і отримай готову дворучну партитуру з фігурацією та басом Страделла.
+              {t('home.hero.text')}
             </p>
             <div
               className="mt-7.5 flex flex-wrap items-center gap-3.5 font-mono uppercase text-[#767c86]"
               style={{ fontSize: '11.5px', letterSpacing: '.1em' }}
             >
-              <span>Автоматичне аранжування</span>
+              <span>{t('home.hero.tagAuto')}</span>
               <span className="text-[#c9ccd1]">·</span>
-              <span>Мелодія + акорди</span>
+              <span>{t('home.hero.tagMelodyChords')}</span>
               <span className="text-[#c9ccd1]">·</span>
-              <span>Баян та акордеон</span>
+              <span>{t('home.hero.tagInstruments')}</span>
             </div>
           </div>
 
@@ -101,7 +103,7 @@ export function Hero() {
               className="mb-2.75 flex justify-between font-mono uppercase text-[#8b8371]"
               style={{ fontSize: '10.5px', letterSpacing: '.14em' }}
             >
-              <span>Приклад · Suite</span>
+              <span>{t('home.hero.example')}</span>
               <span>3/4 · F</span>
             </p>
             <div className="ha-score">

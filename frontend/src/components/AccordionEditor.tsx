@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import abcjs from 'abcjs'
+import { useTranslation } from 'react-i18next'
 import { Download, Save } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { api, ApiError, type AccordionHands } from '../api'
@@ -32,7 +33,6 @@ const KEY_PRESETS = [
 ]
 const METER_PRESETS = ['4/4', '3/4', '6/8', '2/4', '3/8', '12/8']
 
-const HAND_LABEL: Record<Hand, string> = { right: 'Права рука', left: 'Ліва рука' }
 // Ліва рука пише в басовому регістрі: за замовчуванням октава нижче.
 const DEFAULT_OCTAVE: Record<Hand, number> = { right: 0, left: -1 }
 
@@ -44,6 +44,8 @@ interface Props {
 }
 
 export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Props) {
+  const { t } = useTranslation()
+  const handLabel = (h: Hand) => t(h === 'right' ? 'editors.accordion.right' : 'editors.accordion.left')
   const { token } = useAuth()
   const uid = useId().replace(/:/g, '')
   const paperId = `acc-paper-${uid}`
@@ -135,7 +137,7 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
 
   function clearHand() {
     if (!(hand === 'right' ? right : left)) return
-    if (!confirm(`Очистити ${HAND_LABEL[hand].toLowerCase()}?`)) return
+    if (!confirm(t('editors.accordion.confirmClear', { hand: handLabel(hand).toLowerCase() }))) return
     setText(hand, '')
     cursorRef.current[hand] = null
   }
@@ -153,7 +155,7 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
     setPlayState('loading')
 
     if (!abcjs.synth.supportsAudio()) {
-      alert('Ваш браузер не підтримує Web Audio API')
+      alert(t('editors.accordion.noAudio'))
       busyPlayRef.current = false
       setPlayState('idle')
       return
@@ -189,10 +191,10 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
     }
   }
 
-  const fileTitle = title.trim() || 'Баян'
+  const fileTitle = title.trim() || t('editors.accordion.defaultTitle')
 
   function downloadAbc() {
-    saveBlob(new Blob([abc], { type: 'text/vnd.abc' }), safeName(fileTitle, 'баян', 'abc'))
+    saveBlob(new Blob([abc], { type: 'text/vnd.abc' }), safeName(fileTitle, t('editors.accordion.fileSuffix'), 'abc'))
   }
 
   async function downloadMusicXml() {
@@ -202,10 +204,10 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
       const xml = await api.accordionMusicxml(hands)
       saveBlob(
         new Blob([xml], { type: 'application/vnd.recordare.musicxml+xml' }),
-        safeName(fileTitle, 'баян', 'musicxml'),
+        safeName(fileTitle, t('editors.accordion.fileSuffix'), 'musicxml'),
       )
     } catch (err) {
-      setMessage({ kind: 'error', text: err instanceof ApiError ? err.message : 'Завантаження не вдалося.' })
+      setMessage({ kind: 'error', text: err instanceof ApiError ? err.message : t('editors.accordion.downloadFailed') })
     } finally {
       setBusy(null)
     }
@@ -217,10 +219,10 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
     setMessage(null)
     try {
       await api.saveAccordionWork(token, { ...hands, title: fileTitle, abc })
-      setMessage({ kind: 'ok', text: 'Збережено в «Мої роботи».' })
+      setMessage({ kind: 'ok', text: t('editors.accordion.saved') })
       onSaved?.()
     } catch (err) {
-      setMessage({ kind: 'error', text: err instanceof ApiError ? err.message : 'Не вдалося зберегти.' })
+      setMessage({ kind: 'error', text: err instanceof ApiError ? err.message : t('editors.accordion.saveFailed') })
     } finally {
       setBusy(null)
     }
@@ -248,15 +250,15 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           maxLength={255}
-          placeholder="Назва твору"
-          aria-label="Назва твору"
+          placeholder={t('editors.accordion.titlePlaceholder')}
+          aria-label={t('editors.accordion.titlePlaceholder')}
           className="min-w-40 flex-1 rounded-[7px] border border-[#dcdad2] bg-white px-2.5 py-1.25 text-[13px] text-ink outline-none focus:border-accent"
         />
-        <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Тон</span>
+        <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">{t('editors.accordion.key')}</span>
         <select value={keySig} onChange={(e) => setKeySig(e.target.value)} className={selectClass}>
           {KEY_PRESETS.map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
-        <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Розмір</span>
+        <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">{t('editors.accordion.meter')}</span>
         <select value={meter} onChange={(e) => setMeter(e.target.value)} className={selectClass}>
           {METER_PRESETS.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
@@ -270,26 +272,26 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
               : 'border-[#dcdad2] bg-white text-ink hover:border-accent hover:text-accent'
           }`}
         >
-          {playState === 'playing' ? '■ Стоп' : playState === 'loading' ? '… Готую звук' : '▶ Прослухати'}
+          {playState === 'playing' ? t('editors.accordion.stop') : playState === 'loading' ? t('editors.accordion.preparing') : t('editors.accordion.play')}
         </button>
       </div>
 
       {/* Яка рука зараз приймає ноти з кнопок */}
       <div className={rowClass}>
-        <span className={labelClass}>Вводимо</span>
+        <span className={labelClass}>{t('editors.accordion.input')}</span>
         {(['right', 'left'] as Hand[]).map((h) => (
           <button key={h} type="button" onClick={() => setHand(h)} {...noStealFocus} className={btn(hand === h)}>
-            {HAND_LABEL[h]}
+            {handLabel(h)}
           </button>
         ))}
         <button type="button" onClick={clearHand} {...noStealFocus} className={btn(false) + ' ml-auto'}>
-          Очистити
+          {t('editors.accordion.clear')}
         </button>
       </div>
 
       {/* Тривалість, акциденції, октава, пауза, такт */}
       <div className={rowClass}>
-        <span className={labelClass}>Тривал.</span>
+        <span className={labelClass}>{t('editors.accordion.duration')}</span>
         {DURATIONS.map((d) => (
           <button key={d} type="button" onClick={() => setDuration(d)} {...noStealFocus} className={btn(duration === d)}>
             {DURATION_LABEL[d]}
@@ -300,7 +302,7 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
           onClick={() => setDot((v) => !v)}
           {...noStealFocus}
           className={btn(dot)}
-          title="Крапка — збільшує тривалість у 1.5 рази"
+          title={t('editors.accordion.dotTitle')}
         >
           ·
         </button>
@@ -321,15 +323,15 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
         <span className="w-6 text-center font-mono text-xs text-[#8a9099]">{octaveLabel(octaves[hand])}</span>
         <button type="button" onClick={() => shiftOctave(1)} {...noStealFocus} className={btn(false)}>Oct ↑</button>
         <span className="mx-2 block h-5 w-px bg-[#e3e1da]" />
-        <button type="button" onClick={() => insert('z' + suffix)} {...noStealFocus} className={btn(false)}>Пауза</button>
+        <button type="button" onClick={() => insert('z' + suffix)} {...noStealFocus} className={btn(false)}>{t('editors.accordion.rest')}</button>
         <button type="button" onClick={() => insert(' | ')} {...noStealFocus} className={btn(false) + ' font-mono font-bold'}>|</button>
-        <button type="button" onClick={() => insert(' |]')} {...noStealFocus} className={btn(false) + ' font-mono font-bold'} title="Кінцева риска">|]</button>
-        <button type="button" onClick={() => insert('\n')} {...noStealFocus} className={btn(false)} title="Новий рядок нотного стану">↵</button>
+        <button type="button" onClick={() => insert(' |]')} {...noStealFocus} className={btn(false) + ' font-mono font-bold'} title={t('editors.accordion.endBar')}>|]</button>
+        <button type="button" onClick={() => insert('\n')} {...noStealFocus} className={btn(false)} title={t('editors.accordion.newLine')}>↵</button>
       </div>
 
       {/* Ноти */}
       <div className={rowClass}>
-        <span className={labelClass}>Нота</span>
+        <span className={labelClass}>{t('editors.accordion.note')}</span>
         {PITCHES.map((p) => (
           <button
             key={p}
@@ -343,7 +345,7 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
         ))}
         {accidental && (
           <span className="ml-1 text-xs text-accent">
-            → {accidental === '^' ? '♯' : accidental === '_' ? '♭' : '♮'} до наступної ноти
+            {t('editors.accordion.accidentalToNext', { sign: accidental === '^' ? '♯' : accidental === '_' ? '♭' : '♮' })}
           </span>
         )}
       </div>
@@ -360,7 +362,7 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
           {(['right', 'left'] as Hand[]).map((h) => (
             <label key={h} className="block">
               <span className={`mb-1 block text-xs font-medium ${hand === h ? 'text-accent' : 'text-[#8a9099]'}`}>
-                {HAND_LABEL[h]} · {h === 'right' ? 'скрипковий ключ' : 'басовий ключ'}
+                {handLabel(h)} · {t(h === 'right' ? 'editors.accordion.trebleClef' : 'editors.accordion.bassClef')}
               </span>
               <textarea
                 ref={(el) => { areaRefs.current[h] = el }}
@@ -394,7 +396,7 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
           className="flex items-center gap-2 rounded border border-ink/15 px-3 py-2 text-sm transition hover:border-accent/40 disabled:opacity-50"
         >
           <Download className="h-4 w-4" />
-          Завантажити ABC
+          {t('editors.accordion.downloadAbc')}
         </button>
         <button
           type="button"
@@ -403,7 +405,7 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
           className="flex items-center gap-2 rounded border border-ink/15 px-3 py-2 text-sm transition hover:border-accent/40 disabled:opacity-50"
         >
           {busy === 'xml' ? <Spinner /> : <Download className="h-4 w-4" />}
-          Завантажити MusicXML
+          {t('editors.accordion.downloadXml')}
         </button>
         {token ? (
           <button
@@ -413,11 +415,11 @@ export function AccordionEditor({ initial, title, onTitleChange, onSaved }: Prop
             className="flex items-center gap-2 rounded border border-accent bg-white px-3 py-2 text-sm font-medium text-accent transition hover:bg-tint disabled:opacity-50"
           >
             {busy === 'save' ? <Spinner /> : <Save className="h-4 w-4" />}
-            Зберегти в «Мої роботи»
+            {t('editors.accordion.saveToWorks')}
           </button>
         ) : (
           <span className="text-sm text-[#767c86]">
-            <Link to="/login" className="text-accent hover:underline">Увійдіть</Link>, щоб зберігати в «Мої роботи».
+            <Link to="/login" className="text-accent hover:underline">{t('editors.accordion.loginPrefix')}</Link>{t('editors.accordion.loginSuffix')}
           </span>
         )}
         {message && (

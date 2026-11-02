@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Music, Upload, X } from 'lucide-react'
 import { Spinner } from './ui/Spinner'
 import { formatBytes } from '../lib/music'
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function FileDropzone({ onFile, onClear, fileName, fileSize, loading }: Props) {
+  const { t } = useTranslation()
   const [dragging, setDragging] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -26,11 +28,11 @@ export function FileDropzone({ onFile, onClear, fileName, fileSize, loading }: P
     const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : ''
 
     if (!ACCEPTED.includes(ext)) {
-      setLocalError(`Потрібен файл ${ACCEPTED.join(', ')} — отримано «${ext || 'без розширення'}».`)
+      setLocalError(t('panels.dropzone.badExt', { accepted: ACCEPTED.join(', '), ext: ext || t('panels.dropzone.noExt') }))
       return
     }
     if (file.size > MAX_BYTES) {
-      setLocalError(`Файл завеликий: ${formatBytes(file.size)}, ліміт 5 МБ.`)
+      setLocalError(t('panels.dropzone.tooBig', { size: formatBytes(file.size) }))
       return
     }
     setLocalError(null)
@@ -55,7 +57,7 @@ export function FileDropzone({ onFile, onClear, fileName, fileSize, loading }: P
             onClear()
           }}
           className="rounded p-1 text-muted transition hover:bg-ink/5 hover:text-ink"
-          aria-label="Прибрати файл"
+          aria-label={t('panels.dropzone.remove')}
         >
           <X className="h-4 w-4" />
         </button>
@@ -94,9 +96,9 @@ export function FileDropzone({ onFile, onClear, fileName, fileSize, loading }: P
       >
         <Upload className="h-8 w-8 text-accent" />
         <div>
-          <p className="font-medium">Перетягни сюди ноти мелодії</p>
+          <p className="font-medium">{t('panels.dropzone.dragHere')}</p>
           <p className="mt-1 text-sm text-muted">
-            або натисни, щоб обрати · {ACCEPTED.join(' · ')} · до 5 МБ
+            {t('panels.dropzone.orClick', { accepted: ACCEPTED.join(' · ') })}
           </p>
         </div>
         <input

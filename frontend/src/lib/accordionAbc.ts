@@ -1,4 +1,5 @@
 import type { AccordionHands } from '../api'
+import i18n from '../i18n'
 
 /** Порожні такти 4/4 по вісім вісімок — заготовка для кожної руки. */
 export const EMPTY_HAND = 'z8 | z8 | z8 | z8 |]'
@@ -20,8 +21,8 @@ export function composeAccordionAbc({ right, left, key, meter }: AccordionHands,
     `M:${meter}`,
     'L:1/8',
     '%%staves {R L}',
-    'V:R clef=treble name="Права"',
-    'V:L clef=bass name="Ліва"',
+    `V:R clef=treble name="${i18n.t('editors.accordion.scoreRight')}"`,
+    `V:L clef=bass name="${i18n.t('editors.accordion.scoreLeft')}"`,
     `K:${key}`,
     ...body,
   ].join('\n')

@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import abcjs from 'abcjs'
+import { useTranslation } from 'react-i18next'
+import i18n from '../i18n'
 
 // General MIDI program 21 (0-indexed) = Accordion — matches the instrument
 // the backend writes into generated scores (hymnarranger/assembly.py),
@@ -134,7 +136,7 @@ function checkBarLengths(abc: string): string[] {
   const flush = () => {
     if (acc > capacity + EPS) {
       const q = (n: number) => Math.round(n * 4 * 100) / 100
-      msgs.push(`Такт ${bar}: ${q(acc)} чверті замість ${q(capacity)}`)
+      msgs.push(i18n.t('editors.abc.barLength', { bar, actual: q(acc), expected: q(capacity) }))
     }
   }
 
@@ -156,6 +158,7 @@ interface Props {
 }
 
 export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
+  const { t } = useTranslation()
   const uid = useId().replace(/:/g, '')
   const paperId = `abc-paper-${uid}`
   const textareaId = `abc-ta-${uid}`
@@ -423,7 +426,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
     setPlayState('loading')
 
     if (!abcjs.synth.supportsAudio()) {
-      alert('Ваш браузер не підтримує Web Audio API')
+      alert(t('editors.abc.noAudio'))
       busyRef.current = false
       setPlayState('idle')
       return
@@ -503,7 +506,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
     <div className="space-y-2">
       {/* Рядок 0: тональність + розмір + лічильник тактів + відтворення */}
       <div className="flex flex-wrap items-center gap-2.5 rounded-[10px] border border-[#ecebe6] bg-[#faf9f6] px-3.5 py-2.25">
-        <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Тон</span>
+        <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">{t('editors.abc.key')}</span>
         <select
           defaultValue="C"
           onChange={(e) => setHeaderField('K', e.target.value)}
@@ -511,7 +514,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
         >
           {KEY_PRESETS.map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
-        <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Розмір</span>
+        <span className="font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">{t('editors.abc.meter')}</span>
         <select
           defaultValue="4/4"
           onChange={(e) => setHeaderField('M', e.target.value)}
@@ -521,7 +524,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
         </select>
         <div className="ml-auto flex items-center gap-3">
           {barCount > 0 && (
-            <span className="font-mono text-[11px] text-[#8a9099]">{barCount} тактів</span>
+            <span className="font-mono text-[11px] text-[#8a9099]">{t('editors.abc.bars', { n: barCount })}</span>
           )}
           <button
             type="button"
@@ -534,14 +537,14 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
                 : 'border-[#dcdad2] bg-white text-ink hover:border-accent hover:text-accent'
             }`}
           >
-            {playState === 'playing' ? '■ Стоп' : playState === 'loading' ? '… Готую звук' : '▶ Прослухати'}
+            {playState === 'playing' ? t('editors.abc.stop') : playState === 'loading' ? t('editors.abc.preparing') : t('editors.abc.play')}
           </button>
         </div>
       </div>
 
       {/* Рядок 1: тривалість + крапка + акциденції + октава + пауза + такт + ліґатура */}
       <div className="flex flex-wrap items-center gap-1.5 rounded-[10px] border border-[#ecebe6] bg-[#faf9f6] px-3.5 py-2.25">
-        <span className="w-19.5 shrink-0 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Тривал.</span>
+        <span className="w-19.5 shrink-0 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">{t('editors.abc.duration')}</span>
         {DURATIONS.map((d) => (
           <button key={d} type="button" onClick={() => setDuration(d)} {...noStealFocus} className={btn(duration === d)}>
             {DURATION_LABEL[d]}
@@ -552,7 +555,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
           onClick={() => setDot((v) => !v)}
           {...noStealFocus}
           className={btn(dot)}
-          title="Крапка — збільшує тривалість у 1.5 рази"
+          title={t('editors.abc.dotTitle')}
         >
           ·
         </button>
@@ -587,7 +590,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
         <button type="button" onClick={() => setOctave((o) => Math.min(o + 1, 2))} {...noStealFocus} className={btn(false)}>Oct ↑</button>
         <span className="mx-2 block h-5 w-px bg-[#e3e1da]" />
         <button type="button" onClick={() => insertAtCursor('z' + activeSuffix)} {...noStealFocus} className={btn(false)}>
-          Пауза
+          {t('editors.abc.rest')}
         </button>
         <button
           type="button"
@@ -601,7 +604,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
           type="button"
           onClick={wrapInSlur}
           {...noStealFocus}
-          title="Ліґатура — виділіть ноти, потім натисніть"
+          title={t('editors.abc.slurTitle')}
           className={btn(false)}
         >
           ⌒
@@ -610,7 +613,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
 
       {/* Рядок 2: ноти */}
       <div className="flex items-center gap-1.5 rounded-[10px] border border-[#ecebe6] bg-[#faf9f6] px-3.5 py-2.25">
-        <span className="w-19.5 shrink-0 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Нота</span>
+        <span className="w-19.5 shrink-0 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">{t('editors.abc.note')}</span>
         {PITCHES.map((p) => (
           <button
             key={p}
@@ -624,14 +627,14 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
         ))}
         {accidental && (
           <span className="ml-1 text-xs text-accent">
-            → {accidental === '^' ? '♯' : accidental === '_' ? '♭' : '♮'} до виділеної ноти
+            {t('editors.abc.accidentalToSelected', { sign: accidental === '^' ? '♯' : accidental === '_' ? '♭' : '♮' })}
           </span>
         )}
       </div>
 
       {/* Рядок 3: акорди */}
       <div className="flex flex-wrap items-center gap-1.5 rounded-[10px] border border-[#ecebe6] bg-[#faf9f6] px-3.5 py-2.25">
-        <span className="w-19.5 shrink-0 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">Акорд</span>
+        <span className="w-19.5 shrink-0 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">{t('editors.abc.chord')}</span>
         <select
           value={chordRoot}
           onChange={(e) => setChordRoot(e.target.value)}
@@ -665,7 +668,7 @@ export function AbcEditor({ initialAbc = DEFAULT_TUNE, onReady }: Props) {
           {...noStealFocus}
           className={btn(false)}
         >
-          Вставити акорд
+          {t('editors.abc.insertChord')}
         </button>
       </div>
 

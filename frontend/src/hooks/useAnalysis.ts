@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../api'
 import type { AnalyzeOut, ScoreSource } from '../api'
+import i18n from '../i18n'
 
 interface State {
   source: ScoreSource | null
@@ -43,7 +44,7 @@ export function useAnalysis() {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Не вдалося зв’язатися з сервером. Перевір, чи запущено бекенд.'
+          : i18n.t('panels.common.noServer')
       setState({ source, fileName, analysis: null, loading: false, error: message })
     }
   }, [])

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { Navbar } from './components/Navbar'
 import { Footer } from './components/Footer'
 import { HowPage } from './pages/HowPage'
@@ -27,6 +28,7 @@ const variants = {
 }
 
 export default function App() {
+  const { t } = useTranslation()
   const location = useLocation()
 
   return (
@@ -46,7 +48,7 @@ export default function App() {
             <Route
               path="/"
               element={
-                <ErrorBoundary label="Головна сторінка">
+                <ErrorBoundary label={t('panels.common.pageHome')}>
                   <Suspense fallback={<div className="flex justify-center py-24"><Spinner /></div>}>
                     <HomePage />
                   </Suspense>
@@ -61,8 +63,8 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/works" element={<ProtectedRoute><MyWorksPage /></ProtectedRoute>} />
-            <Route path="/melodies" element={<ErrorBoundary label="Мелодії"><MelodiesPage /></ErrorBoundary>} />
-            <Route path="/accordion" element={<ErrorBoundary label="Редактор для баяна"><AccordionEditorPage /></ErrorBoundary>} />
+            <Route path="/melodies" element={<ErrorBoundary label={t('panels.common.pageMelodies')}><MelodiesPage /></ErrorBoundary>} />
+            <Route path="/accordion" element={<ErrorBoundary label={t('panels.common.pageAccordion')}><AccordionEditorPage /></ErrorBoundary>} />
             <Route path="/support" element={<SupportPage />} />
           </Routes>
           <Footer />

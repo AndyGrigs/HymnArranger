@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Music4, Wand2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Spinner } from '../components/ui/Spinner'
 import { fetchMelodies, type MelodyMeta } from '../lib/melodies'
 
 const AbcPaper = lazy(() => import('../components/AbcPaper').then(m => ({ default: m.AbcPaper })))
 
 export function MelodiesPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [melodies, setMelodies] = useState<MelodyMeta[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -28,9 +30,9 @@ export function MelodiesPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <header className="mb-8">
-        <h1 className="font-display text-3xl text-accent">Спробуйте самі</h1>
+        <h1 className="font-display text-3xl text-accent">{t('editors.melodies.title')}</h1>
         <p className="mt-1 text-muted">
-          Мелодії з готовою гармонією — оберіть будь-яку й згенеруйте власну партитуру, без реєстрації
+          {t('editors.melodies.subtitle')}
         </p>
       </header>
 
@@ -43,12 +45,12 @@ export function MelodiesPage() {
       {!melodies && !error && (
         <div className="flex items-center gap-2 py-12 text-muted">
           <Spinner />
-          <span className="text-sm">Завантажую список…</span>
+          <span className="text-sm">{t('editors.melodies.loadingList')}</span>
         </div>
       )}
 
       {melodies && melodies.length === 0 && (
-        <p className="text-sm text-muted">Мелодій поки немає — незабаром з'являться.</p>
+        <p className="text-sm text-muted">{t('editors.melodies.empty')}</p>
       )}
 
       {melodies && melodies.length > 0 && (
@@ -86,7 +88,7 @@ export function MelodiesPage() {
               className="flex items-center gap-2 rounded-[9px] border border-accent bg-accent px-4 py-2.5 text-[13.5px] font-medium text-white transition hover:opacity-90"
             >
               <Wand2 className="h-4 w-4" />
-              Згенерувати партитуру
+              {t('editors.melodies.generate')}
             </button>
           </div>
           <Suspense fallback={<div className="flex justify-center py-12"><Spinner /></div>}>

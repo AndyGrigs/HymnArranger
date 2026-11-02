@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from 'lucide-react'
 import type { AnalyzeOut } from '../api'
 import { Card } from './ui/Card'
@@ -13,17 +14,18 @@ function Fact({ label, value }: { label: string; value: string | number }) {
 }
 
 export function AnalysisPanel({ data }: { data: AnalyzeOut }) {
-  const family = data.meter_family === 'compound' ? 'складений' : 'простий'
+  const { t } = useTranslation()
+  const family = t(data.meter_family === 'compound' ? 'panels.analysis.compound' : 'panels.analysis.simple')
 
   return (
-    <Card title="Аналіз мелодії">
+    <Card title={t('panels.analysis.title')}>
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Fact label="Розмір" value={`${data.meter} (${family})`} />
-        <Fact label="Тональність" value={formatKey(data.key)} />
-        <Fact label="Тактів" value={data.measures} />
+        <Fact label={t('panels.analysis.meter')} value={t('panels.analysis.meterWithFamily', { meter: data.meter, family })} />
+        <Fact label={t('panels.analysis.key')} value={formatKey(data.key)} />
+        <Fact label={t('panels.analysis.measures')} value={data.measures} />
         <Fact
-          label="Затакт"
-          value={data.pickup_ql > 0 ? `${data.pickup_ql} чв.` : 'немає'}
+          label={t('panels.analysis.pickup')}
+          value={data.pickup_ql > 0 ? t('panels.analysis.pickupValue', { n: data.pickup_ql }) : t('panels.analysis.noPickup')}
         />
       </dl>
 
@@ -43,13 +45,12 @@ export function AnalysisPanel({ data }: { data: AnalyzeOut }) {
 
       <div className="mt-5">
         <h3 className="text-xs uppercase tracking-wide text-muted">
-          Акорди — {data.chords.length} шт. (джерело: {data.chord_source})
+          {t('panels.analysis.chordsHeading', { n: data.chords.length, source: data.chord_source })}
         </h3>
 
         {data.chords.length === 0 ? (
           <p className="mt-2 text-sm text-muted">
-            Акордових символів не знайдено. Ліва рука буде порожньою — додай
-            позначки акордів у MuseScore і завантаж файл ще раз.
+            {t('panels.analysis.noChords')}
           </p>
         ) : (
           <ol className="mt-2 flex flex-wrap gap-1.5">
@@ -62,7 +63,7 @@ export function AnalysisPanel({ data }: { data: AnalyzeOut }) {
               return (
                 <li
                   key={i}
-                  title={`такт ${measure}, зміщення ${chord.offset}`}
+                  title={t('panels.analysis.chordTitle', { measure, offset: chord.offset })}
                   className="rounded bg-ink/5 px-2 py-1 font-mono text-xs"
                 >
                   <span className="text-muted">{measure}</span>

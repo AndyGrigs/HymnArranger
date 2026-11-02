@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Music, Music2, Download, Edit3, Loader2,
   Play, Check,
@@ -29,19 +30,20 @@ type ResumeState = {
   resumeParams: Record<string, unknown>
 } | null
 
-const INPUT_TABS: { id: InputMode; label: string }[] = [
-  { id: 'upload', label: 'Завантажити файл' },
-  { id: 'abc',    label: 'ABC-нотація' },
+const INPUT_TABS: { id: InputMode; labelKey: string }[] = [
+  { id: 'upload', labelKey: 'home.page.tabUpload' },
+  { id: 'abc',    labelKey: 'home.page.tabAbc' },
 ]
 
-const SIDEBAR_TABS: { id: ResultTab; Icon: React.FC<{ className?: string }>; label: string }[] = [
-  { id: 'score',  Icon: Music,    label: 'Партитура' },
-  { id: 'editor', Icon: Edit3,    label: 'Редактор'  },
-  { id: 'chords', Icon: Music2,   label: 'Акорди'    },
-  { id: 'export', Icon: Download, label: 'Експорт'   },
+const SIDEBAR_TABS: { id: ResultTab; Icon: React.FC<{ className?: string }>; labelKey: string }[] = [
+  { id: 'score',  Icon: Music,    labelKey: 'home.page.sideScore'  },
+  { id: 'editor', Icon: Edit3,    labelKey: 'home.page.sideEditor' },
+  { id: 'chords', Icon: Music2,   labelKey: 'home.page.sideChords' },
+  { id: 'export', Icon: Download, labelKey: 'home.page.sideExport' },
 ]
 
 export function HomePage() {
+  const { t } = useTranslation()
   const location   = useLocation()
   const navigate   = useNavigate()
   const resumeRef  = useRef(location.state as ResumeState)
@@ -83,7 +85,7 @@ export function HomePage() {
     if (!state?.resumeAbc) return
     setInputMode('abc')
     setResumedAbc(state.resumeAbc)
-    analyzeFromText(state.resumeAbc, state.resumeTitle ?? 'Мелодія')
+    analyzeFromText(state.resumeAbc, state.resumeTitle ?? t('home.page.resumeLabel'))
     navigate('/', { replace: true })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -123,9 +125,9 @@ export function HomePage() {
 
           {/* Card header: title + segmented tab control */}
           <div className="flex items-center gap-4 border-b border-[#ecebe6] px-5.5 py-4">
-            <h2 className="font-display text-2xl font-semibold text-ink">Мелодія</h2>
+            <h2 className="font-display text-2xl font-semibold text-ink">{t('home.page.melody')}</h2>
             <div className="ml-auto flex gap-1 rounded-[9px] border border-[#e3e1da] bg-[#f8f7f4] p-0.75">
-              {INPUT_TABS.map(({ id, label }) => (
+              {INPUT_TABS.map(({ id, labelKey }) => (
                 <button
                   key={id}
                   type="button"
@@ -136,7 +138,7 @@ export function HomePage() {
                       : 'bg-transparent text-[#767c86]'
                   }`}
                 >
-                  {label}
+                  {t(labelKey)}
                 </button>
               ))}
             </div>
@@ -174,7 +176,7 @@ export function HomePage() {
                     className="flex items-center gap-2 rounded-[9px] border border-accent bg-white px-4 py-2.5 text-[13.5px] font-medium text-accent transition hover:bg-tint disabled:opacity-50"
                   >
                     {analysis.loading ? <Spinner /> : <Check className="h-4 w-4" />}
-                    {analysis.loading ? 'Аналізую…' : 'Взяти ноти з редактора'}
+                    {analysis.loading ? t('home.page.analyzing') : t('home.page.takeFromEditor')}
                   </button>
                 </div>
               )}
@@ -182,10 +184,10 @@ export function HomePage() {
 
             {/* Right — Settings */}
             <div className="w-full p-5.5 md:w-79 md:shrink-0">
-              <h2 className="font-display text-2xl font-semibold text-ink">Налаштування</h2>
+              <h2 className="font-display text-2xl font-semibold text-ink">{t('home.page.settings')}</h2>
               {analysis.analysis && (
                 <p className="mt-1 font-mono text-[10.5px] uppercase tracking-[.13em] text-[#8a9099]">
-                  Розмір {analysis.analysis.meter} · тональність {analysis.analysis.key}
+                  {t('home.page.meterKey', { meter: analysis.analysis.meter, key: analysis.analysis.key })}
                 </p>
               )}
               <div className="mt-4.5">
@@ -216,7 +218,7 @@ export function HomePage() {
                     className="flex w-full items-center justify-center gap-2 rounded-[10px] bg-accent py-3 text-sm font-medium text-white opacity-40"
                   >
                     <Music className="h-4 w-4" />
-                    Аранжувати
+                    {t('home.page.arrange')}
                   </button>
                 )}
               </div>
@@ -245,7 +247,7 @@ export function HomePage() {
                 {arrangement.result.title}
               </h2>
               <span className="rounded-full border border-[#e3e1da] px-2.75 py-0.75 font-mono text-[10.5px] uppercase tracking-[.11em] text-[#8a9099]">
-                Попередній перегляд
+                {t('home.page.preview')}
               </span>
               <div className="ml-auto flex items-center gap-4.5">
                 <div className="flex items-center gap-2.5">
@@ -282,7 +284,7 @@ export function HomePage() {
               {/* Desktop sidebar */}
               <div className="hidden w-49 shrink-0 border-r border-[#ecebe6] p-4 md:block">
                 <nav className="space-y-0.5">
-                  {SIDEBAR_TABS.map(({ id, Icon, label }) => (
+                  {SIDEBAR_TABS.map(({ id, Icon, labelKey }) => (
                     <button
                       key={id}
                       type="button"
@@ -294,7 +296,7 @@ export function HomePage() {
                       }`}
                     >
                       <Icon className="h-3.75 w-3.75 shrink-0" />
-                      {label}
+                      {t(labelKey)}
                     </button>
                   ))}
                 </nav>
@@ -302,7 +304,7 @@ export function HomePage() {
 
               {/* Mobile tab bar */}
               <div className="flex overflow-x-auto border-b border-[#ecebe6] md:hidden w-full">
-                {SIDEBAR_TABS.map(({ id, Icon, label }) => (
+                {SIDEBAR_TABS.map(({ id, Icon, labelKey }) => (
                   <button
                     key={id}
                     type="button"
@@ -314,7 +316,7 @@ export function HomePage() {
                     }`}
                   >
                     <Icon className="h-4 w-4" />
-                    {label}
+                    {t(labelKey)}
                   </button>
                 ))}
               </div>
@@ -322,7 +324,7 @@ export function HomePage() {
               {/* Content area */}
               <div className="flex min-w-0 flex-1 flex-col bg-[#fcfcfa]">
 
-                {/* ─ Партитура ─ */}
+                {/* ─ Score ─ */}
                 {activeTab === 'score' && (
                   <div className="flex-1 p-[26px_30px_34px]">
                     {arrangement.result.abc ? (
@@ -341,13 +343,13 @@ export function HomePage() {
                       </div>
                     ) : (
                       <p className="text-sm text-muted">
-                        ABC-нотація недоступна для цього аранжування.
+                        {t('home.page.abcUnavailable')}
                       </p>
                     )}
                   </div>
                 )}
 
-                {/* ─ Редактор ─ */}
+                {/* ─ Editor ─ */}
                 {activeTab === 'editor' && (
                   <div className="flex-1 p-[24px_30px]">
                     {arrangement.result.abc ? (
@@ -359,13 +361,13 @@ export function HomePage() {
                       </Suspense>
                     ) : (
                       <p className="text-sm text-muted">
-                        ABC-нотація недоступна для цього аранжування.
+                        {t('home.page.abcUnavailable')}
                       </p>
                     )}
                   </div>
                 )}
 
-                {/* ─ Акорди ─ */}
+                {/* ─ Chords ─ */}
                 {activeTab === 'chords' && (
                   <div className="p-[26px_30px] space-y-5">
                     {analysis.analysis ? (
@@ -374,12 +376,12 @@ export function HomePage() {
                         <SectionList sections={arrangement.result.sections} />
                       </>
                     ) : (
-                      <p className="text-sm text-muted">Немає даних аналізу.</p>
+                      <p className="text-sm text-muted">{t('home.page.noAnalysis')}</p>
                     )}
                   </div>
                 )}
 
-                {/* ─ Експорт ─ */}
+                {/* ─ Export ─ */}
                 {activeTab === 'export' && (
                   <div className="p-[26px_30px] space-y-5">
                     <MidiPlayer
@@ -392,7 +394,7 @@ export function HomePage() {
                     <DownloadBar
                       mode={arrangement.result.mode}
                       musicxml={arrangement.result.musicxml}
-                      fileName={analysis.fileName ?? 'гімн'}
+                      fileName={analysis.fileName ?? t('home.page.defaultName')}
                     />
                   </div>
                 )}

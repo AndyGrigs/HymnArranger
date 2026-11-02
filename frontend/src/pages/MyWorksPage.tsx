@@ -1,9 +1,11 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Trash2, Eye, X, Music, Pencil, Check, Search, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { api, ApiError, type WorkSummary, type WorkDetail } from '../api'
 import { Spinner } from '../components/ui/Spinner'
+import { currentLocale } from '../i18n'
 
 const AbcPaper = lazy(() => import('../components/AbcPaper').then(m => ({ default: m.AbcPaper })))
 
@@ -16,6 +18,7 @@ function resumeTarget(w: { title: string; source_abc: string | null; input_param
 }
 
 function WorkViewer({ musicxml }: { musicxml: string }) {
+  const { t } = useTranslation()
   const [abc, setAbc] = useState<string | null>(null)
   const [err, setErr] = useState(false)
 
@@ -27,12 +30,13 @@ function WorkViewer({ musicxml }: { musicxml: string }) {
       .catch(() => setErr(true))
   }, [musicxml])
 
-  if (err) return <p className="text-sm text-muted">Не вдалося відобразити партитуру.</p>
+  if (err) return <p className="text-sm text-muted">{t('works.viewFailed')}</p>
   if (abc === null) return <div className="flex justify-center py-12"><Spinner /></div>
   return <Suspense fallback={<div className="flex justify-center py-12"><Spinner /></div>}><AbcPaper abc={abc} /></Suspense>
 }
 
 export function MyWorksPage() {
+  const { t } = useTranslation()
   const { token } = useAuth()
   const navigate = useNavigate()
 
@@ -66,11 +70,11 @@ export function MyWorksPage() {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : 'Не вдалося завантажити роботи')
+        if (!cancelled) setError(err instanceof ApiError ? err.message : t('works.loadFailed'))
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [token, search, page])
+  }, [token, search, page, t])
 
   function handleSearchChange(value: string) {
     setSearchInput(value)
@@ -88,7 +92,7 @@ export function MyWorksPage() {
     try {
       setSelected(await api.getWork(token, id))
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не вдалося відкрити роботу')
+      setError(err instanceof ApiError ? err.message : t('works.openFailed'))
     } finally {
       setSelectedLoading(false)
     }
@@ -108,7 +112,7 @@ export function MyWorksPage() {
       setWorks((prev) => prev?.map((w) => w.id === id ? { ...w, title: updated.title } : w) ?? null)
       setRenamingId(null)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не вдалося перейменувати роботу')
+      setError(err instanceof ApiError ? err.message : t('works.renameFailed'))
     } finally {
       setRenamingLoadingId(null)
     }
@@ -116,7 +120,7 @@ export function MyWorksPage() {
 
   async function handleDelete(id: string) {
     if (!token) return
-    if (!confirm('Видалити цю роботу? Дію не можна скасувати.')) return
+    if (!confirm(t('works.confirmDelete'))) return
     setDeletingId(id)
     try {
       await api.deleteWork(token, id)
@@ -124,7 +128,7 @@ export function MyWorksPage() {
       setTotal((t) => t - 1)
       if (selected?.id === id) setSelected(null)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не вдалося видалити роботу')
+      setError(err instanceof ApiError ? err.message : t('works.deleteFailed'))
     } finally {
       setDeletingId(null)
     }
@@ -140,7 +144,7 @@ export function MyWorksPage() {
       const target = resumeTarget(detail)
       navigate(target.path, { state: target.state })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не вдалося відкрити роботу')
+      setError(err instanceof ApiError ? err.message : t('works.openFailed'))
     } finally {
       setSelectedLoading(false)
     }
@@ -148,14 +152,14 @@ export function MyWorksPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-6 py-12">
-      <h1 className="font-display text-2xl font-bold text-ink">Мої роботи</h1>
+      <h1 className="font-display text-2xl font-bold text-ink">{t('works.title')}</h1>
 
       {/* Search */}
       <div className="relative mt-5 max-w-sm">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
         <input
           type="search"
-          placeholder="Пошук за назвою…"
+          placeholder={t('works.searchPlaceholder')}
           value={searchInput}
           onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full rounded-xl border border-ink/15 bg-white py-2 pl-9 pr-3 text-sm text-ink placeholder:text-muted outline-none focus:border-accent focus:ring-1 focus:ring-accent/30"
@@ -173,12 +177,12 @@ export function MyWorksPage() {
       ) : !works || works.length === 0 ? (
         <p className="mt-6 text-sm text-muted">
           {search
-            ? 'За вашим запитом нічого не знайдено.'
-            : <>Тут ще немає збережених робіт. Згенеруй аранжування на{' '}
+            ? t('works.nothingFound')
+            : <>{t('works.emptyPrefix')}{' '}
                 <button type="button" onClick={() => navigate('/')} className="text-accent hover:underline">
-                  головній сторінці
+                  {t('works.emptyLink')}
                 </button>{' '}
-                — воно з'явиться тут автоматично.</>
+                {t('works.emptySuffix')}</>
           }
         </p>
       ) : (
@@ -218,7 +222,7 @@ export function MyWorksPage() {
                   ) : (
                     <>
                       <p className="truncate font-medium text-ink">{w.title}</p>
-                      <p className="text-xs text-muted">{new Date(w.created_at).toLocaleString('uk-UA')}</p>
+                      <p className="text-xs text-muted">{new Date(w.created_at).toLocaleString(currentLocale())}</p>
                     </>
                   )}
                 </div>
@@ -227,7 +231,7 @@ export function MyWorksPage() {
                     type="button"
                     onClick={() => startRename(w.id, w.title)}
                     disabled={renamingId !== null}
-                    aria-label="Перейменувати"
+                    aria-label={t('works.rename')}
                     className="flex h-7 w-7 items-center justify-center rounded-lg border border-ink/15 text-ink/50 transition hover:bg-ink/5 hover:text-ink disabled:opacity-30"
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -238,13 +242,13 @@ export function MyWorksPage() {
                     className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-sm text-ink/70 transition hover:bg-ink/5"
                   >
                     <Eye className="h-3.5 w-3.5" />
-                    Переглянути
+                    {t('works.view')}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleResume(w.id)}
                     disabled={!w.has_source}
-                    title="Продовжити роботу з цією мелодією"
+                    title={t('works.resumeHint')}
                     className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-sm text-ink/70 transition hover:bg-ink/5 disabled:opacity-30"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
@@ -266,7 +270,7 @@ export function MyWorksPage() {
           {totalPages > 1 && (
             <div className="mt-5 flex items-center justify-between text-sm">
               <span className="text-muted">
-                Показано {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} з {total}
+                {t('works.shown', { from: (page - 1) * PAGE_SIZE + 1, to: Math.min(page * PAGE_SIZE, total), total })}
               </span>
               <div className="flex items-center gap-1">
                 <button
@@ -274,7 +278,7 @@ export function MyWorksPage() {
                   onClick={() => setPage((p) => p - 1)}
                   disabled={page === 1}
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink/15 text-ink/60 transition hover:bg-ink/5 disabled:opacity-30"
-                  aria-label="Попередня сторінка"
+                  aria-label={t('works.prevPage')}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -311,7 +315,7 @@ export function MyWorksPage() {
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page === totalPages}
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink/15 text-ink/60 transition hover:bg-ink/5 disabled:opacity-30"
-                  aria-label="Наступна сторінка"
+                  aria-label={t('works.nextPage')}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -327,7 +331,7 @@ export function MyWorksPage() {
             <div className="flex items-center justify-between border-b border-ink/10 px-5 py-3">
               <span className="flex items-center gap-2 font-semibold text-ink/80">
                 <Music className="h-4 w-4" />
-                {selected?.title ?? 'Завантаження…'}
+                {selected?.title ?? t('works.loading')}
               </span>
               <div className="flex items-center gap-2">
                 {selected?.source_abc && (
@@ -340,13 +344,13 @@ export function MyWorksPage() {
                     className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-sm text-ink/70 transition hover:bg-ink/5"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
-                    Продовжити роботу
+                    {t('works.resume')}
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => setSelected(null)}
-                  aria-label="Закрити"
+                  aria-label={t('works.close')}
                   className="rounded-full p-1.5 text-ink/50 hover:bg-ink/5 hover:text-ink"
                 >
                   <X className="h-4 w-4" />

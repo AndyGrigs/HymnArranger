@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Download, FileMusic } from 'lucide-react'
 import { api, ApiError } from '../api'
 import { saveBlob, safeName } from '../lib/download'
@@ -11,21 +12,22 @@ interface Props {
   fileName: string
 }
 
-const SUFFIX: Record<Mode, string> = {
-  suite: 'варіації',
-  preset: 'аранжування',
-  merge: 'порівняння',
-  style: 'сакала',
+const SUFFIX_KEY: Record<Mode, string> = {
+  suite: 'panels.download.suffixSuite',
+  preset: 'panels.download.suffixPreset',
+  merge: 'panels.download.suffixMerge',
+  style: 'panels.download.suffixStyle',
 }
 
 export function DownloadBar({ mode, musicxml, fileName }: Props) {
+  const { t } = useTranslation()
   const [busy, setBusy] = useState<'mxl' | 'midi' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // MusicXML уже є в пам'яті — зберігаємо напряму, без зайвого запиту.
   function saveMusicXml() {
     const blob = new Blob([musicxml], { type: 'application/vnd.recordare.musicxml+xml' })
-    saveBlob(blob, safeName(fileName, SUFFIX[mode], 'musicxml'))
+    saveBlob(blob, safeName(fileName, t(SUFFIX_KEY[mode]), 'musicxml'))
   }
 
   // Стиснений .mxl: передаємо вже готовий musicxml на бекенд лише для zip-упаковки.
@@ -35,9 +37,9 @@ export function DownloadBar({ mode, musicxml, fileName }: Props) {
     setError(null)
     try {
       const blob = await api.compress({ musicxml })
-      saveBlob(blob, safeName(fileName, SUFFIX[mode], 'mxl'))
+      saveBlob(blob, safeName(fileName, t(SUFFIX_KEY[mode]), 'mxl'))
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Завантаження не вдалося.')
+      setError(err instanceof ApiError ? err.message : t('panels.download.failed'))
     } finally {
       setBusy(null)
     }
@@ -48,9 +50,9 @@ export function DownloadBar({ mode, musicxml, fileName }: Props) {
     setError(null)
     try {
       const blob = await api.midi({ musicxml: musicxml })
-      saveBlob(blob, safeName(fileName, SUFFIX[mode], 'mid'))
+      saveBlob(blob, safeName(fileName, t(SUFFIX_KEY[mode]), 'mid'))
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Завантаження не вдалося.')
+      setError(err instanceof ApiError ? err.message : t('panels.download.failed'))
     } finally {
       setBusy(null)
     }
@@ -69,7 +71,7 @@ export function DownloadBar({ mode, musicxml, fileName }: Props) {
 
         <button type="button" onClick={saveMxl} disabled={busy !== null} className={buttonClass}>
           {busy === 'mxl' ? <Spinner /> : <Download className="h-4 w-4 text-accent" />}
-          .mxl (стиснений)
+          {t('panels.download.mxl')}
         </button>
 
         <button type="button" onClick={saveMidi} disabled={busy !== null} className={buttonClass}>

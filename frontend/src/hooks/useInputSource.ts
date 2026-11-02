@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ScoreSource } from '../api'
+import i18n from '../i18n'
 
 export type InputMode = 'upload' | 'abc'
 
@@ -34,7 +35,7 @@ export function useInputSource({ analysisLoad, arrangementClear, analysisReset }
   }
 
   function handleAnalyzeFromAbc() {
-    analyzeFromText(abcGetRef.current?.() ?? '', 'Мелодія з ABC-редактора')
+    analyzeFromText(abcGetRef.current?.() ?? '', i18n.t('home.page.abcEditorLabel'))
   }
 
   return {

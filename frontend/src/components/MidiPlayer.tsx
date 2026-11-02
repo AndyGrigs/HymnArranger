@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Volume2 } from 'lucide-react'
 import { api, ApiError } from '../api'
 import type { ScoreSource } from '../api'
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function MidiPlayer({ source, resetKey }: Props) {
+  const { t } = useTranslation()
   const hostRef = useRef<HTMLDivElement>(null)
   const urlRef = useRef<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -71,7 +73,7 @@ export function MidiPlayer({ source, resetKey }: Props) {
       setReady(true)
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : 'Не вдалося отримати MIDI з сервера.',
+        err instanceof ApiError ? err.message : t('panels.midi.failed'),
       )
     } finally {
       setLoading(false)
@@ -88,7 +90,7 @@ export function MidiPlayer({ source, resetKey }: Props) {
           className="flex items-center gap-2 rounded border border-ink/15 px-4 py-2 text-sm transition hover:border-accent/40 disabled:opacity-50"
         >
           {loading ? <Spinner /> : <Volume2 className="h-4 w-4 text-accent" />}
-          {loading ? 'Готую звук…' : 'Слухати'}
+          {loading ? t('panels.midi.preparing') : t('panels.midi.listen')}
         </button>
       )}
 
@@ -98,7 +100,7 @@ export function MidiPlayer({ source, resetKey }: Props) {
         // Перший клік на play підвантажує ~2 МБ семплів, тому початок
         // відтворення помітно затримується — попереджаємо заздалегідь.
         <p className="mt-2 text-xs text-muted">
-          Перший запуск завантажує банк звуків — можлива пауза в кілька секунд.
+          {t('panels.midi.firstRun')}
         </p>
       )}
 

@@ -159,7 +159,7 @@ def build_right_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Gener
 
         cs = ctx.chord_at(ev.offset)
         target = ctx.next_sounding_pitch(i)
-        pitches = figurate(ev.pitch, target, cs, ctx.key, n_parts, cfg)
+        pitches = figurate(ev.pitch, target, cs, ctx.key_at(ev.offset), n_parts, cfg)
         sub = ev.ql / n_parts
         for j, p in enumerate(pitches):
             n = note.Note(p)

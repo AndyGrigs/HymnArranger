@@ -271,10 +271,10 @@ def build_thirds_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Gene
     def under(off, dur):
         return [g for g in segs if off < g[1] - 1e-6 and g[0] < off + dur - 1e-6]
 
-    def candidates(bass_list, cs):
+    def candidates(bass_list, cs, at):
         """Висоти, що дають терцію/сексту до КОЖНОГО баса у вікні."""
         chord_pcs = {p.pitchClass for p in cs.pitches} if cs is not None else set()
-        key_pcs = {sp.pitchClass for sp in ctx.key.pitches}
+        key_pcs = {sp.pitchClass for sp in ctx.key_at(at).pitches}
         out = []
         for semis in CONSONANT:
             for octv in (0, 12, 24):
@@ -308,7 +308,7 @@ def build_thirds_hand(ctx: ArrangeContext, cfg: ArrangeConfig) -> List[note.Gene
             bl = under(off, dur)
             if not bl:
                 break
-            pool = candidates(bl, ctx.chord_at(off))
+            pool = candidates(bl, ctx.chord_at(off), off)
             if pool:
                 break
             nxt = min(g[1] for g in bl if g[1] > off + 1e-6)

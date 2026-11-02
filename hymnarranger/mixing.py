@@ -63,6 +63,9 @@ def arrange_mixed(source, cfgs: Sequence[ArrangeConfig],
                   bars_per_phrase: int = 4, verbose: bool = True) -> stream.Score:
     """Одна варіація, де фактури чергуються по фразах: cfgs[0], cfgs[1], ..."""
     ctx = parse_input(source)
+    if any(c.neapolitan for c in cfgs):
+        from .colors import add_neapolitan
+        ctx = add_neapolitan(ctx, seed=cfgs[0].neapolitan_seed, verbose=verbose)
     bounds = phrase_bounds(ctx, bars_per_phrase)
 
     # кожну фактуру будуємо на весь гімн один раз, а не на кожну фразу

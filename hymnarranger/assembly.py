@@ -136,6 +136,10 @@ def arrange(source, cfg: Optional[ArrangeConfig] = None,
         for w in ctx.warnings:
             print('  [!] ' + w)
 
+    if cfg.neapolitan:
+        from .colors import add_neapolitan
+        ctx = add_neapolitan(ctx, seed=cfg.neapolitan_seed, verbose=not quiet)
+
     rh_elems, lh_elems = build_hands(ctx, cfg)
 
     if isinstance(rh_elems, tuple):

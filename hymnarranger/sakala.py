@@ -60,10 +60,11 @@ def stradella_voicing(cs: harmony.ChordSymbol, lo: int = 55, hi: int = 68
     for nm in dict.fromkeys(names):
         p = pitch.Pitch(nm)
         p.octave = 3
+        # 'P8', а не 12: ціле число music21 переписує енгармонічно (D- -> C#)
         while p.midi < lo:
-            p = p.transpose(12)
+            p = p.transpose('P8')
         while p.midi > hi:
-            p = p.transpose(-12)
+            p = p.transpose('-P8')
         out.append(p)
     return sorted(out, key=lambda x: x.midi)
 

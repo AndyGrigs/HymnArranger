@@ -33,6 +33,15 @@ class ArrangeContext:
     warnings: List[str] = field(default_factory=list)
     chord_source: str = 'harmony'        # 'harmony' | 'text' | 'lyrics' | 'none'
     pickup_ql: float = 0.0               # довжина затакту; 0 = затакту немає
+    # тимчасові тональності відхилень: (початок, кінець, тональність)
+    local_keys: List[Tuple[float, float, key.Key]] = field(default_factory=list)
+
+    def key_at(self, offset: float) -> key.Key:
+        """Тональність, що діє в цій точці: локальна під відхиленням, інакше основна."""
+        for lo, hi, k in self.local_keys:
+            if lo - 1e-6 <= offset < hi - 1e-6:
+                return k
+        return self.key
 
     @property
     def music_end_ql(self) -> float:
@@ -112,6 +121,8 @@ class ArrangeConfig:
     arp_shape: Tuple[int, ...] = (0, 1, 2, 1)   # індекси тонів акорду у фігурі
     thirds_floor_midi: int = 64       # E4 — низ регістру для режиму 2г
     thirds_note_beats: float = 2.0    # тривалість ноти супроводу В ДОЛЯХ (2г)
+    neapolitan: bool = False          # раз на варіацію підставити N6 (див. colors.py)
+    neapolitan_seed: Optional[int] = None
     tempo: Optional[int] = None
     instrument_name: str = 'Accordion'
     name: str = 'default'

@@ -36,6 +36,15 @@ def _bass_degree(cs: harmony.ChordSymbol, degree: int) -> pitch.Pitch:
     в акорді немає терції чи квінти (напр., sus без квінти), підміняємо
     примою — краще повторити приму, ніж мовчати чи брати чужий тон.
     """
+    # Акорд із заданим басом (D-/F, C/E): бас указаний явно, тож ходової
+    # лінії I -> III -> V немає — весь акорд тримаємо на цьому басі.
+    # Саме так N6 звучить правильно: терція в басу, а не прима.
+    slash = cs.bass()
+    if slash is not None and slash.name != cs.root().name:
+        b = pitch.Pitch(slash.name)
+        b.octave = _BASS_OCTAVE
+        return b
+
     root = pitch.Pitch(cs.root().name)
     root.octave = _BASS_OCTAVE
     if degree % 3 == 0:

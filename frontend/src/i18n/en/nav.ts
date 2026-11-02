@@ -25,4 +25,10 @@ export const nav: Messages['nav'] = {
     viaCommons: 'via Wikimedia Commons',
     madeWithLove: 'Made with love for church music',
   },
+  notFound: {
+    title: 'Page not found',
+    text: 'This page does not exist or has been moved. Check the address or go back to the home page.',
+    home: 'Back to home',
+    examples: 'View examples',
+  },
 }

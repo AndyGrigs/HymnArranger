@@ -15,6 +15,7 @@ import { MyWorksPage } from './pages/MyWorksPage'
 import { SupportPage } from './pages/SupportPage'
 import { AccordionEditorPage } from './pages/AccordionEditorPage'
 import { MelodiesPage } from './pages/MelodiesPage'
+import { NotFoundPage } from './pages/NotFoundPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Spinner } from './components/ui/Spinner'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
@@ -66,6 +67,7 @@ export default function App() {
             <Route path="/melodies" element={<ErrorBoundary label={t('panels.common.pageMelodies')}><MelodiesPage /></ErrorBoundary>} />
             <Route path="/accordion" element={<ErrorBoundary label={t('panels.common.pageAccordion')}><AccordionEditorPage /></ErrorBoundary>} />
             <Route path="/support" element={<SupportPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
           <Footer />
         </motion.div>

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { LANGUAGES, setLanguage, type Language } from '../i18n'
 
-const SHORT: Record<Language, string> = { uk: 'UA', de: 'DE' }
+const SHORT: Record<Language, string> = { uk: 'UA', de: 'DE', en: 'EN' }
 
 export function LanguageSwitcher() {
   const { t, i18n } = useTranslation()

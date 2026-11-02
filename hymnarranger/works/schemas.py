@@ -12,6 +12,18 @@ class WorkRename(BaseModel):
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
 
 
+class AccordionHands(BaseModel):
+    right: Annotated[str, StringConstraints(max_length=20000)] = ""
+    left: Annotated[str, StringConstraints(max_length=20000)] = ""
+    key: Annotated[str, StringConstraints(max_length=8)] = "C"
+    meter: Annotated[str, StringConstraints(pattern=r"^\d{1,2}/\d{1,2}$")] = "4/4"
+
+
+class AccordionWorkIn(AccordionHands):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
+    abc: Annotated[str, StringConstraints(max_length=50000)]
+
+
 class WorkSummary(BaseModel):
     id: uuid.UUID
     title: str

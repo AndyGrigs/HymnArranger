@@ -164,3 +164,17 @@ export interface WorksPage {
   page: number
   page_size: number
 }
+
+/** Дві руки редактора баяна (ABC-тіло кожного стану без заголовка). */
+export interface AccordionHands {
+  right: string
+  left: string
+  key: string
+  meter: string
+}
+
+/** POST /works/accordion */
+export interface AccordionWorkIn extends AccordionHands {
+  title: string
+  abc: string
+}

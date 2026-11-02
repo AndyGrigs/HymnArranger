@@ -1,5 +1,7 @@
 import { ApiError, extractDetail } from './errors'
 import type {
+  AccordionHands,
+  AccordionWorkIn,
   AnalyzeOut,
   ArrangeOut,
   AuthToken,
@@ -157,6 +159,12 @@ export const api = {
     return postJson<{ abc: string }>('/convert/abc', source, undefined, signal)
   },
 
+  /** MusicXML із двох рук редактора баяна (права — скрипковий, ліва — басовий ключ). */
+  async accordionMusicxml(hands: AccordionHands, signal?: AbortSignal): Promise<string> {
+    const r = await sendJson<{ musicxml: string }>('POST', '/accordion/musicxml', hands, undefined, signal)
+    return r.musicxml
+  },
+
   /** Конвертує передану партитуру MusicXML у MIDI без повторного аранжування. */
   midi(source: ScoreSource, signal?: AbortSignal) {
     return postBlob('/midi', source, { raw: true }, signal)
@@ -213,6 +221,10 @@ export const api = {
       page_size: params.pageSize ?? 10,
     })
     return getJson<WorksPage>(`/works${qs}`, token, signal)
+  },
+
+  saveAccordionWork(token: string, work: AccordionWorkIn, signal?: AbortSignal) {
+    return sendJson<WorkSummary>('POST', '/works/accordion', work, token, signal)
   },
 
   getWork(token: string, workId: string, signal?: AbortSignal) {

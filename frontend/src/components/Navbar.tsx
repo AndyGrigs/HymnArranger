@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 const NAV_LINKS: { id: string; label: string; to?: string }[] = [
   { id: 'home',     label: 'Головна',       to: '/' },
   { id: 'how',      label: 'Як це працює',  to: '/how' },
+  { id: 'accordion', label: 'Редактор',    to: '/accordion' },
   { id: 'examples', label: 'Приклади', to: '/examples' },
   { id: 'support',  label: 'Підтримка', to: '/support' },
 ]

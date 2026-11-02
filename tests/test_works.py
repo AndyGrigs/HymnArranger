@@ -126,3 +126,48 @@ def test_has_source_false_when_no_abc(auth_client, make_user, make_work):
     assert r.status_code == 200
     item = next(w for w in r.json()["items"] if w["id"] == str(work.id))
     assert item["has_source"] is False
+
+
+
+# ── Accordion editor save ─────────────────────────────────────────────────────
+
+_ACCORDION = {
+    "title": "Баян",
+    "right": "CDEF GABc | c8 |]",
+    "left": "C,2 E,2 G,2 E,2 | C,8 |]",
+    "key": "C",
+    "meter": "4/4",
+    "abc": _ABC,
+}
+
+
+def test_save_accordion_work_two_staves(auth_client, make_user):
+    alice = make_user(email="accordion@example.com")
+    r = auth_client.post("/works/accordion", json=_ACCORDION, headers=bearer(alice))
+    assert r.status_code == 201
+    work_id = r.json()["id"]
+
+    detail = auth_client.get(f"/works/{work_id}", headers=bearer(alice)).json()
+    assert detail["input_params"]["kind"] == "accordion"
+    assert detail["input_params"]["left"] == _ACCORDION["left"]
+    assert detail["musicxml_content"].count("<part id") == 2
+    assert "<sign>F</sign>" in detail["musicxml_content"]
+
+
+def test_save_accordion_work_empty_is_rejected(auth_client, make_user):
+    alice = make_user(email="accordion2@example.com")
+    r = auth_client.post(
+        "/works/accordion", json={**_ACCORDION, "right": "", "left": ""}, headers=bearer(alice)
+    )
+    assert r.status_code == 422
+
+
+def test_save_accordion_work_requires_auth(auth_client):
+    assert auth_client.post("/works/accordion", json=_ACCORDION).status_code in (401, 403)
+
+
+def test_accordion_musicxml_endpoint(client):
+    r = client.post("/accordion/musicxml", json={"right": "CDEF|]", "left": "C,4|]"})
+    assert r.status_code == 200
+    assert r.json()["musicxml"].count("<part id") == 2
+    assert client.post("/accordion/musicxml", json={}).status_code == 422

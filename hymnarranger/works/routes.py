@@ -1,14 +1,16 @@
 import uuid
 from typing import List, Optional
 
+from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from hymnarranger.auth.dependencies import get_current_user
 from hymnarranger.db.models import User
 from hymnarranger.db.session import get_db
-from hymnarranger.db.works import get_user_work, list_user_works, rename_user_work, delete_user_work
-from hymnarranger.works.schemas import WorkDetail, WorkSummary, WorkRename, WorksPage
+from hymnarranger.accordion import EmptyHandError, build_accordion_musicxml
+from hymnarranger.db.works import save_generated_work, get_user_work, list_user_works, rename_user_work, delete_user_work
+from hymnarranger.works.schemas import AccordionWorkIn, WorkDetail, WorkSummary, WorkRename, WorksPage
 from hymnarranger.auth.schemas import MessageResponse
 
 router = APIRouter(prefix="/works", tags=["works"])
@@ -25,6 +27,35 @@ def get_my_works(
     skip = (page - 1) * page_size
     items, total = list_user_works(db, current_user, search=search, skip=skip, limit=page_size)
     return WorksPage(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.post("/accordion", response_model=WorkSummary, status_code=status.HTTP_201_CREATED)
+async def save_accordion_work(
+    body: AccordionWorkIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        musicxml = await run_in_threadpool(
+            build_accordion_musicxml, body.right, body.left, body.key, body.meter
+        )
+    except EmptyHandError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Партитура порожня")
+    except Exception as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Не вдалося прочитати ноти: {exc}")
+    return save_generated_work(
+        db, current_user,
+        title=body.title,
+        input_params={
+            "kind": "accordion",
+            "right": body.right,
+            "left": body.left,
+            "key": body.key,
+            "meter": body.meter,
+        },
+        musicxml_content=musicxml,
+        source_abc=body.abc,
+    )
 
 
 @router.get("/{work_id}", response_model=WorkDetail)

@@ -9,6 +9,12 @@ const AbcPaper = lazy(() => import('../components/AbcPaper').then(m => ({ defaul
 
 const PAGE_SIZE = 10
 
+/** Роботи з редактора баяна відновлюємо в ньому ж, решту — на головній. */
+function resumeTarget(w: { title: string; source_abc: string | null; input_params: Record<string, unknown> }) {
+  const state = { resumeAbc: w.source_abc, resumeTitle: w.title, resumeParams: w.input_params }
+  return { path: w.input_params.kind === 'accordion' ? '/accordion' : '/', state }
+}
+
 function WorkViewer({ musicxml }: { musicxml: string }) {
   const [abc, setAbc] = useState<string | null>(null)
   const [err, setErr] = useState(false)
@@ -131,13 +137,8 @@ export function MyWorksPage() {
     try {
       const detail = await api.getWork(token, id)
       if (!detail.source_abc) return
-      navigate('/', {
-        state: {
-          resumeAbc: detail.source_abc,
-          resumeTitle: detail.title,
-          resumeParams: detail.input_params,
-        },
-      })
+      const target = resumeTarget(detail)
+      navigate(target.path, { state: target.state })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не вдалося відкрити роботу')
     } finally {
@@ -332,13 +333,10 @@ export function MyWorksPage() {
                 {selected?.source_abc && (
                   <button
                     type="button"
-                    onClick={() => navigate('/', {
-                      state: {
-                        resumeAbc: selected.source_abc,
-                        resumeTitle: selected.title,
-                        resumeParams: selected.input_params,
-                      },
-                    })}
+                    onClick={() => {
+                      const target = resumeTarget(selected)
+                      navigate(target.path, { state: target.state })
+                    }}
                     className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-sm text-ink/70 transition hover:bg-ink/5"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />

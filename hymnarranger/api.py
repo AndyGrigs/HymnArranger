@@ -46,7 +46,9 @@ from hymnarranger.auth.dependencies import get_current_user_optional
 from hymnarranger.db.models import User
 from hymnarranger.db.session import get_db
 from hymnarranger.db.works import save_generated_work
+from hymnarranger.accordion import EmptyHandError, build_accordion_musicxml
 from hymnarranger.works.routes import router as works_router
+from hymnarranger.works.schemas import AccordionHands
 
 
 ALLOWED_HOSTS = [
@@ -621,6 +623,23 @@ async def compress_mxl(request: Request):
         )
     finally:
         os.unlink(path)
+
+
+@app.post('/accordion/musicxml')
+async def accordion_musicxml(body: AccordionHands):
+    """Збирає MusicXML із двох рук редактора баяна (для локального збереження)."""
+    try:
+        xml = await _run_sync(
+            functools.partial(build_accordion_musicxml, body.right, body.left, body.key, body.meter),
+            timeout=15.0,
+        )
+    except EmptyHandError:
+        raise HTTPException(422, 'Партитура порожня')
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(422, f'Не вдалося прочитати ноти: {exc}')
+    return {'musicxml': xml}
 
 
 @app.post('/convert/abc')
